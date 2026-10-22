@@ -1,0 +1,2382 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>地球 online（国服公测版）</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400&family=Noto+Serif+SC:wght@400;600&family=Ma+Shan+Zheng&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="hark.css" />
+    <link rel="stylesheet" href="hark-hero.css" />
+    <style>
+      /* 纸与墨：心境变量由 setMood() 缓动改写 */
+      :root, :root[data-theme="dark"] { color-scheme: light; }
+      :root {
+        --bg: #f6ecd9; --paper: #fcf5e8; --ink: #4a3626; --accent: #e0915a;
+        --vig: 0; --sat: 1; --gray: 0;
+        --warm: #c97b3c; --bad: #687b90; --seal: #ad4536;
+        --serif: "Noto Serif SC", "Songti SC", "STSong", "Source Han Serif SC", "SimSun", serif;
+        --ink-2: color-mix(in srgb, var(--ink) 74%, var(--paper));
+        --line: color-mix(in srgb, var(--ink) 48%, transparent);
+        --line-soft: color-mix(in srgb, var(--ink) 16%, transparent);
+        --hand: 22px 17px 24px 18px / 18px 23px 17px 22px;
+        --hand-s: 13px 10px 14px 11px / 11px 14px 10px 13px;
+        --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .32  0 0 0 0 .24  0 0 0 0 .14  0 0 0 .11 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      }
+      /* 老去时褪色，离世时黑白（同中文网站的“哀悼模式”） */
+      html { filter: saturate(var(--sat)) grayscale(var(--gray)); transition: filter 2s ease; }
+      html.is-ended { --gray: 1; transition-duration: 3s; }
+      body { background-color: var(--bg); background-image: var(--noise); color: var(--ink); }
+      body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 40; background: radial-gradient(ellipse at center, transparent 50%, rgb(28 36 46 / 0.32)); opacity: var(--vig); transition: opacity 2s ease; }
+
+      .x-screen[hidden] { display: none; }
+      .x-card { background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--hand); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+      .x-card h3 { font: 600 20px/1.35 var(--serif); margin: 0; }
+      .x-card p { font: var(--type-body); color: var(--ink-2); margin: 0; }
+      .x-dim { opacity: 0.55; cursor: pointer; }
+      .x-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+      /* 投胎：中国地图，一屏放下 */
+      html.is-draw, html.is-draw body { overflow: hidden; height: 100%; overscroll-behavior: none; }
+      .x-draw { position: fixed; inset: 0; z-index: 30; height: 100vh; height: 100dvh; background-color: var(--bg); background-image: var(--noise); display: flex; justify-content: center; padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+      .x-draw__in { width: 100%; max-width: min(980px, max(320px, calc((100dvh - 300px) * 1.45))); height: 100%; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+      .x-draw__t { flex: none; margin: 2px 0 0; font: 600 22px/1.3 var(--serif); text-align: center; color: var(--ink); }
+      .x-mapwrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+      .x-mapbox { flex: none; width: 100%; aspect-ratio: 1000 / 689; max-height: 100%; overflow: hidden; background: var(--paper); border: 1.5px solid var(--line-soft); border-radius: var(--hand); }
+      .x-map { display: block; width: 100%; height: 100%; }
+      .x-sea { fill: color-mix(in srgb, #e8f2f8 55%, var(--paper)); }
+      .x-inset { fill: #e8f2f8; stroke: var(--ink); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+      .x-inset__t { text-anchor: end; fill: var(--ink); font-family: var(--serif); font-weight: 600; paint-order: stroke; stroke: color-mix(in srgb, #e8f2f8 55%, var(--paper)); stroke-linejoin: round; }
+      .x-key-scale { flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; font: var(--type-caption); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+      .x-key-scale i { width: min(180px, 40%); height: 10px; border: 1px solid var(--line-soft); border-radius: 5px; background: linear-gradient(90deg, rgb(252 236 214), rgb(196 98 42)); }
+      @media (max-width: 600px) {
+        .x-draw { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+        .x-draw__in { gap: 12px; }
+        .x-draw__t { font-size: 24px; padding: 0 12px; }
+        .x-mapbox { border-radius: 0; border-left: 0; border-right: 0; }
+        .x-draw__src { padding: 0 12px; }
+      }
+      .x-p { stroke: var(--ink); stroke-width: 0.6px; vector-effect: non-scaling-stroke; stroke-linejoin: round; transition: fill 0.12s; }
+      .x-p--x { fill: color-mix(in srgb, var(--ink) 14%, var(--paper)); }
+      .x-p.is-on { fill: var(--ink) !important; }
+      .x-p.is-hit { fill: var(--seal) !important; }
+      .x-jd { fill: var(--ink); stroke: var(--ink); stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
+      .x-hl { fill: none; stroke: var(--ink); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linejoin: round; pointer-events: none; }
+      .x-hl--pulse { stroke: var(--seal); opacity: 0; }
+      .x-hl--pulse.is-go { animation: x-pulse 0.9s ease-out 2; }
+      @keyframes x-pulse { from { opacity: 1; stroke-width: 2px; } to { opacity: 0; stroke-width: 16px; } }
+      .x-lead line { stroke: var(--ink); stroke-width: 0.75px; vector-effect: non-scaling-stroke; }
+      .x-lead circle { fill: var(--ink); }
+      .x-lab { transform: translate(var(--x, 0), var(--y, 0)) scale(var(--s, 1)); transform-box: view-box; transform-origin: 0 0; transition: transform 0.35s var(--ease-out); pointer-events: none; }
+      .x-map.is-lay .x-lab { transition: none; }
+      .x-lab text { text-anchor: middle; fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-linejoin: round; }
+      .x-lab__n { font-family: var(--serif); font-weight: 600; }
+      .x-lab__p { font-family: var(--sans); font-variant-numeric: tabular-nums; }
+      .x-lab--x text { fill: var(--ink-2); font-weight: 400; }
+      .x-lab.is-on { --s: 1.15; }
+      .x-lab.is-hit { --s: 1.45; }
+      .x-lab.is-hit .x-lab__n { fill: var(--seal); }
+      .x-ur.is-on { background: var(--ink); color: var(--paper); }
+      .x-ur.is-hit { background: var(--seal); color: #fff; animation: x-hit 0.5s ease both; }
+      @keyframes x-hit { 40% { transform: scale(1.18); } }
+      .x-draw__res { flex: none; min-height: 32px; margin: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; font: 500 16px/1 var(--serif); color: var(--ink-2); }
+      .x-ur { padding: 8px 10px; border-radius: var(--hand-s); color: var(--ink); font-variant-numeric: tabular-nums; }
+      .x-ur b { font-weight: 600; }
+      .x-ur__cap { flex-basis: 100%; text-align: center; font: var(--type-caption); color: var(--ink-2); }
+      /* 家庭十格：每格下面一行全国占比（小字、浅色）；窄屏两行五格，宽屏一行十格 */
+      .x-fstrip { flex-basis: 100%; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+      .x-fstrip .x-ur { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 2px; min-width: 0; }
+      .x-ur__p { font: var(--type-caption); line-height: 1.2; color: var(--ink-2); white-space: nowrap; }
+      .x-ur.is-on .x-ur__p, .x-ur.is-hit .x-ur__p { color: inherit; opacity: 0.8; }
+      @media (min-width: 640px) { .x-fstrip { grid-template-columns: repeat(10, minmax(0, 1fr)); } }
+      /* 抽签提示：滚动时一行小字，落点时变成结果 */
+      .x-ur__hint { flex-basis: 100%; min-height: 1.4em; text-align: center; font: var(--type-caption); line-height: 1.4; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .x-ur__hint.is-done { color: var(--ink); font-weight: 600; }
+      .x-draw__src { flex: none; margin: 0; text-align: center; font: var(--type-caption); line-height: 1.4; color: var(--ink-2); text-wrap: balance; }
+      .x-draw .links { flex: none; justify-content: center; margin: 0; }
+      .x-draw .btn { min-width: 160px; justify-content: center; }
+      /* 出生按钮：绘本风圆形，待机时呼吸 + 涟漪，抽签时虚线圈转动，落点时轻轻一弹 */
+      .x-bornbox { flex: none; display: flex; justify-content: center; padding: 4px 0 2px; }
+      .x-born { position: relative; width: 92px; height: 92px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border: 2px solid var(--ink); border-radius: 50%; background: var(--paper); color: var(--ink); box-shadow: 3px 4px 0 -1px var(--line-soft); font: 600 16px/1 var(--serif); letter-spacing: 0.12em; text-indent: 0.12em; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s; animation: x-breathe 2.8s ease-in-out infinite; }
+      .x-born svg { width: 42px; height: 42px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .x-born svg .x-born__fill { fill: color-mix(in srgb, var(--accent) 30%, var(--paper)); }
+      .x-born:hover { background: color-mix(in srgb, var(--accent) 14%, var(--paper)); }
+      .x-born:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+      .x-born::before, .x-born::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; pointer-events: none; }
+      .x-born::before { border: 1.5px solid color-mix(in srgb, var(--accent) 70%, var(--ink)); opacity: 0; animation: x-ripple 2.8s ease-out infinite; }
+      .x-born:disabled { cursor: default; animation: none; }
+      .x-born:disabled::before { animation: none; opacity: 0; }
+      .x-born.is-busy::after { inset: -7px; border: 2px dashed var(--accent); animation: x-spin 1.6s linear infinite; }
+      .x-born.is-busy svg { animation: x-rock 0.8s ease-in-out infinite alternate; transform-origin: 50% 80%; }
+      .x-born.is-pop { animation: x-pop 0.45s var(--ease-out) both; }
+      @keyframes x-breathe { 50% { transform: scale(1.045); } }
+      @keyframes x-ripple { 0% { transform: scale(1); opacity: 0.7; } 70%, 100% { transform: scale(1.32); opacity: 0; } }
+      @keyframes x-spin { to { transform: rotate(360deg); } }
+      @keyframes x-rock { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+      @keyframes x-pop { 0% { transform: scale(1); } 40% { transform: scale(1.16); } 70% { transform: scale(0.96); } 100% { transform: scale(1); } }
+      .x-mo__opts { width: min(340px, 100%); display: grid; gap: 8px; }
+      .x-mo__opts[hidden], .x-mo__go[hidden] { display: none; }
+      .x-mo__opts .x-opt { background-color: var(--paper); }
+      .x-facts { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; font: var(--type-body); }
+      .x-facts dt { color: var(--ink-2); }
+      .x-facts dd { margin: 0; font-weight: var(--weight-medium); }
+      .x-big { font: 600 26px/1.3 var(--serif); margin: 0; }
+      .x-odds { display: grid; gap: 8px; padding: 14px 16px; border: 1.5px dashed var(--line); border-radius: var(--hand-s); }
+      .x-odds:empty { display: none; }
+      .x-odds h4 { margin: 0; font: 600 16px/1.35 var(--serif); }
+      .x-card .x-odds p { font: 400 15px/1.6 var(--serif); color: var(--ink-2); overflow-wrap: anywhere; }
+      .x-odds p b { color: var(--ink); font-weight: 600; }
+      .x-card .x-odds .x-odds__src { font: var(--type-caption); padding-top: 6px; border-top: 1px solid var(--line-soft); }
+      /* 家庭十级图例：十级台阶，名称竖排在台阶下 */
+      .x-lad { display: grid; gap: 6px; }
+      .x-lad__bars--named li { grid-template-rows: 30px auto; align-items: end; justify-items: stretch; gap: 4px; }
+      .x-lad__bars--named li span { justify-self: center; align-self: start; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 0; line-height: 1.05; min-height: 4.2em; }
+      .x-lad .x-lad__cap { font: var(--type-caption); color: var(--ink-2); }
+      .x-lad__bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+      .x-lad__bars { grid-template-columns: repeat(10, 1fr); align-items: end; }
+      .x-lad__bars li { display: grid; gap: 2px; text-align: center; font: 12px/1 var(--sans); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+      .x-lad__bars i { display: block; height: calc(8px + var(--h) * 2.2px); border: 1px solid var(--line); border-radius: 3px 3px 1px 1px; background: var(--line-soft); }
+      .x-lad__bars .is-me { color: var(--ink); font-weight: 600; }
+      .x-lad__bars .is-me i { background: var(--seal); border-color: var(--seal); }
+      .x-card .x-lad .x-lad__me { font: 14px/1.45 var(--sans); color: var(--ink-2); }
+      .x-lad__me b { color: var(--ink); font-weight: 600; }
+      .x-odds__two { display: grid; gap: 2px; }
+      .x-card .x-odds .x-odds__two p { font: 14px/1.45 var(--sans); }
+      .x-cmp { display: grid; gap: 4px; }
+      .x-cmp__row { display: grid; grid-template-columns: 3.4em 1fr auto; align-items: center; gap: 8px; font: 12px/1.2 var(--serif); color: var(--ink-2); }
+      .x-cmp__row i { display: block; height: 6px; border: 1px solid var(--line); border-radius: 4px 3px 4px 3px; overflow: hidden; }
+      .x-cmp__row b { display: block; height: 100%; background: var(--line); }
+      .x-cmp__row.is-me b { background: var(--accent); }
+      .x-cmp__row span:last-child { min-width: 4em; text-align: right; font: 12px/1 var(--sans); font-variant-numeric: tabular-nums; }
+
+      /* 人生页：固定一屏，页面本身不滚动 */
+      html.is-life, html.is-life body { overflow: hidden; height: 100%; overscroll-behavior: none; }
+      .x-life { position: fixed; inset: 0; z-index: 30; height: 100vh; height: 100dvh; background-color: var(--bg); background-image: var(--noise); display: flex; justify-content: center; gap: 24px; padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); }
+      .x-main { flex: 1 1 auto; width: 100%; max-width: 600px; min-width: 0; height: 100%; display: flex; flex-direction: column; gap: 8px; padding-top: env(safe-area-inset-top); }
+      .x-top { flex: none; height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .x-now { display: flex; align-items: center; gap: 8px; min-width: 0; font: 400 15px/1 var(--serif); color: var(--ink-2); white-space: nowrap; }
+      .x-age { font: 600 24px/1 var(--serif); color: var(--ink); }
+      .x-age small { font-size: 14px; font-weight: 400; margin-left: 1px; }
+      .x-stamp { flex: none; font: 600 12px/1 var(--serif); color: var(--ink); padding: 5px 7px; border: 1.5px solid var(--accent); border-radius: 6px 8px 5px 7px; transform: rotate(-3deg); transition: border-color 2s; }
+      .x-tools { display: flex; align-items: center; gap: 6px; flex: none; position: relative; }
+      .x-seg { display: flex; border: 1.5px solid var(--line); border-radius: var(--hand-s); background: var(--paper); overflow: hidden; }
+      .x-seg .x-key { border: 0; border-radius: 0; min-height: 44px; height: 44px; }
+      .x-seg .x-key + .x-key { border-left: 1.5px solid var(--line-soft); }
+      .x-ico { width: 44px; padding: 0; display: inline-grid; place-items: center; }
+      .x-ico svg { width: 18px; height: 18px; fill: currentColor; }
+      .x-spd { min-width: 52px; font: 500 14px/1 var(--serif); }
+      .x-pop { position: absolute; top: calc(100% + 6px); right: 0; z-index: 35; display: flex; gap: 4px; padding: 6px; background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--hand-s); box-shadow: 4px 5px 0 -1px var(--line-soft); }
+      .x-pop[hidden] { display: none; }
+      .x-pop .x-key { min-height: 44px; min-width: 44px; padding: 0 6px; font-size: 14px; }
+
+      .x-stat { flex: none; min-height: 96px; display: flex; align-items: center; gap: 12px; padding: 4px 12px 4px 6px; background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--hand); }
+      .x-stat .x-av { flex: none; width: 84px; height: 84px; margin: 0; }
+      .x-stat .x-av svg { width: 100%; height: 100%; }
+      .x-meta { flex: 1; min-width: 0; display: grid; gap: 3px; }
+      .x-who { margin: 0; font: 12px/1.2 var(--sans); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .x-money { margin: 0; font: 12px/1.3 var(--sans); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .x-money b { font-weight: var(--weight-medium); color: var(--ink); }
+      .x-money.is-debt b:first-child { color: var(--fill-system-red); }
+      .x-bars { display: grid; gap: 10px; }
+      .x-meta .x-bars { gap: 2px; }
+      .x-bar { display: grid; grid-template-columns: 2.4em 1fr 1.8em; align-items: center; gap: 8px; font: 12px/1.15 var(--serif); }
+      .x-bar i { display: block; height: 6px; border: 1px solid var(--line); border-radius: 4px 3px 4px 3px; overflow: hidden; }
+      .x-bar b { display: block; height: 100%; background: var(--accent); transition: width 0.6s ease, background-color 2s; }
+      .x-bwrap { display: flex; align-items: center; gap: 2px; }
+      .x-bwrap .x-bars { flex: 1; min-width: 0; }
+      .x-q { flex: none; width: var(--tap); height: var(--tap); margin-right: -10px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--ink-2); cursor: pointer; touch-action: manipulation; }
+      .x-q span { width: 20px; height: 20px; display: grid; place-items: center; border: 1.5px solid var(--line); border-radius: 50%; background: var(--paper); font: 600 12px/1 var(--serif); }
+      .x-q:hover span { color: var(--ink); }
+      .x-help dl { margin: 0; display: grid; gap: 10px; }
+      .x-help dt { font: 600 15px/1.4 var(--serif); }
+      .x-help dd { margin: 2px 0 0; color: var(--ink-2); font: 13px/1.65 var(--serif); text-wrap: pretty; }
+      .x-bar span:last-child { text-align: right; color: var(--ink-2); font: 12px/1 var(--sans); font-variant-numeric: tabular-nums; }
+
+      .x-key { min-height: 48px; min-width: var(--tap); padding: 0 8px; border: 1.5px solid var(--line); border-radius: var(--hand-s); background: var(--paper); color: var(--ink); font: 500 15px/1 var(--serif); cursor: pointer; transition: background-color 0.2s, color 0.2s; touch-action: manipulation; }
+      .x-key:hover { background: color-mix(in srgb, var(--accent) 16%, var(--paper)); }
+      .x-key[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+      .x-key:disabled { opacity: 0.45; cursor: default; background: var(--paper); }
+      .x-tools > .x-key { min-height: 44px; }
+
+      /* 今年 */
+      .x-today { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--hand); box-shadow: 4px 5px 0 -1px var(--line-soft); }
+      /* 滚动时间线：最新一年在最上，旧年份往下推，底部渐隐裁切 */
+      .x-roll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 14px 18px 40px; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 64px), transparent); scrollbar-width: none; }
+      .x-roll::-webkit-scrollbar { display: none; }
+      .x-yb { display: grid; grid-template-rows: 1fr; animation: x-grow 0.5s ease both; transition: opacity 0.6s ease; }
+      .x-yb > div { min-height: 0; overflow: hidden; padding-bottom: 14px; }
+      .x-yb + .x-yb > div { padding-top: 12px; border-top: 1px dashed var(--line-soft); }
+      .x-yb:nth-child(2) { opacity: 0.75; }
+      .x-yb:nth-child(3) { opacity: 0.55; }
+      .x-yb:nth-child(4) { opacity: 0.45; }
+      .x-yb:nth-child(n+5) { opacity: 0.38; }
+      .x-yb h4 { margin: 0 0 8px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font: 600 13px/1.3 var(--serif); color: var(--ink-2); }
+      .x-yb:first-child h4 { font-size: 14px; color: var(--ink); }
+      .x-yb h4 small { font: 12px/1.4 var(--sans); color: var(--ink-2); font-weight: 400; }
+      .x-yb ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+      .x-yb:first-child ul { gap: 10px; }
+      .x-yb ul:empty::before { content: "这一年，平平淡淡地过去了。"; font: 400 15px/1.6 var(--serif); color: var(--ink-2); }
+      .x-yb .x-ln { font-size: 15px; line-height: 1.6; max-width: none; transition: font-size 0.4s ease; animation: x-in 0.45s ease both; }
+      .x-yb:first-child .x-ln, .x-yb:first-child ul:empty::before { font-size: 17px; line-height: 1.7; }
+      @keyframes x-grow { from { grid-template-rows: 0fr; opacity: 0; transform: translateY(-10px); } }
+
+      .x-bot { flex: none; min-height: 56px; display: flex; align-items: center; gap: 8px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+      .x-fbox { flex: 1; min-width: 0; }
+      .x-fbox[hidden] { display: none; }
+      .x-focus { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 2px 0; }
+      .x-focus::-webkit-scrollbar { display: none; }
+      .x-fchip { flex: none; min-height: var(--tap); padding: 0 12px; border: 1.25px solid var(--line); border-radius: var(--r-pill); background: transparent; color: var(--ink); font: 500 14px/1 var(--serif); cursor: pointer; touch-action: manipulation; transition: background-color 0.2s, color 0.2s; }
+      .x-fchip:hover { background: color-mix(in srgb, var(--accent) 16%, var(--paper)); }
+      .x-fchip.is-auto { border-style: dashed; border-color: var(--accent); }
+      .x-fchip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); border-style: solid; }
+      .x-histbtn { flex: none; margin-left: auto; min-height: var(--tap); font-size: 14px; }
+
+      /* 人生记录：手机上是 90% 高的底部抽屉，宽屏是侧栏 */
+      .x-hist { position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; height: 90vh; height: 90dvh; display: flex; flex-direction: column; background-color: var(--paper); background-image: var(--noise); border: 1.5px solid var(--line); border-bottom: 0; border-radius: 22px 18px 0 0; box-shadow: 0 -6px 0 -2px var(--line-soft); transform: translateY(102%); visibility: hidden; transition: transform 0.35s ease, visibility 0s 0.35s; }
+      .x-hist.is-open { transform: none; visibility: visible; transition: transform 0.35s ease; }
+      .x-hist__head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 4px 20px; }
+      .x-hist__head h3 { margin: 0; font: 600 18px/1.3 var(--serif); }
+      .x-scrim { position: fixed; inset: 0; z-index: 44; background: rgb(40 30 20 / 0.3); }
+      .x-scrim[hidden] { display: none; }
+      .x-log { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 20px max(16px, env(safe-area-inset-bottom)); }
+      @media (min-width: 960px) {
+        .x-life { padding-inline: 24px; }
+        .x-main { padding-block: 12px 0; }
+        .x-hist { position: static; z-index: auto; flex: 0 1 420px; min-width: 0; height: auto; margin: 16px 0; transform: none; visibility: visible; transition: none; border: 1.5px solid var(--line); border-radius: var(--hand); box-shadow: none; }
+        .x-hist .x-close, .x-histbtn, .x-scrim { display: none; }
+        .x-hist__head { padding: 14px 20px 4px; }
+      }
+      .x-feed { list-style: none; margin: 0; padding: 0; }
+      .x-yr { padding: 14px 0 12px; animation: x-in 0.6s ease both; }
+      .x-yr + .x-yr { border-top: 1px dashed var(--line-soft); }
+      .x-yr h4 { margin: 0 0 8px; font: 600 15px/1.3 var(--serif); }
+      .x-yr h4 small { font-weight: 400; color: var(--ink-2); }
+      .x-yr ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+      .x-ln { padding: 2px 0 2px 12px; border-left: 2px solid var(--line-soft); font: var(--type-body); line-height: 1.7; max-width: 38em; overflow-wrap: anywhere; text-wrap: pretty; }
+      .x-yr ul { gap: 10px; }
+      .x-ln--warm { border-left-color: var(--warm); color: color-mix(in srgb, var(--ink) 80%, var(--warm)); }
+      .x-ln--bad { border-left-color: var(--bad); color: color-mix(in srgb, var(--ink) 78%, var(--bad)); }
+      .x-ln--big { border-left-color: var(--ink); font-weight: var(--weight-medium); font-family: var(--serif); }
+      .x-ln--choice { border-left-color: var(--seal); color: color-mix(in srgb, var(--ink) 75%, var(--seal)); }
+      .x-ln--choice::before { content: "抉择"; font: 600 12px/1 var(--serif); color: var(--seal); border: 1px solid var(--seal); border-radius: 4px; padding: 2px 4px; margin-right: 8px; vertical-align: 2px; }
+
+      /* 抉择 */
+      .x-modal { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: var(--gutter); background: rgb(40 30 20 / 0.34); z-index: 50; }
+      .x-modal[hidden] { display: none; }
+      .x-sheet { width: 100%; max-width: 480px; background-color: var(--paper); background-image: var(--noise); border: 1.5px solid var(--line); border-radius: var(--hand); padding: 24px; display: grid; gap: 12px; box-shadow: 5px 6px 0 -1px var(--line-soft); animation: x-up 0.4s ease both; }
+      .x-sheet h3 { font: 600 22px/1.35 var(--serif); margin: 0; }
+      .x-sheet .fineprint { color: var(--ink-2); line-height: 1.65; overflow-wrap: anywhere; text-wrap: pretty; margin: 0; }
+      .x-sheet { max-height: calc(100vh - 2 * var(--gutter)); max-height: calc(100dvh - 2 * var(--gutter)); overflow-y: auto; }
+      @media (max-width: 480px) { .x-sheet { padding: 20px 18px; } .x-sheet h3 { font-size: 20px; } }
+      .x-soft { display: inline-flex; align-items: center; gap: 10px; min-height: var(--tap); margin-top: 8px; font: var(--type-label); color: var(--ink-2); cursor: pointer; }
+      .x-soft input { width: 20px; height: 20px; margin: 0; accent-color: var(--ink); cursor: pointer; }
+      .x-softbox { position: relative; z-index: 1; justify-self: start; max-width: 100%; display: grid; gap: 2px; padding: 2px 14px 10px; background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--hand-s); }
+      .x-softbox .x-soft { margin-top: 0; }
+      .x-soft__help { margin: 0; font: var(--type-label); color: var(--ink-2); max-width: 32em; overflow-wrap: anywhere; white-space: normal; }
+      .x-opt { min-height: 52px; text-align: left; padding: 12px 16px; border: 1.5px solid var(--line); border-radius: var(--hand-s); background: transparent; color: var(--ink); font: 500 16px/1.35 var(--serif); cursor: pointer; }
+      .x-opt:hover { background: color-mix(in srgb, var(--accent) 16%, var(--paper)); }
+      .x-opt small { display: block; color: var(--ink-2); font: var(--type-small); margin-top: 2px; }
+
+      /* 回望 */
+      .x-reflect { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 32px 24px; background-color: var(--bg); background-image: var(--noise); animation: x-fade 1.2s ease both; }
+      .x-reflect[hidden] { display: none; }
+      .x-reflect__card { background-color: var(--bg); max-width: 28em; display: grid; justify-items: center; gap: 24px; text-align: center; }
+      .x-reflect__card::before { content: ""; width: 40px; height: 1.5px; background: var(--line); }
+      .x-reflect__age { font: 400 15px/1 var(--serif); color: var(--ink-2); letter-spacing: 0.2em; }
+      .x-reflect__q { font: 600 clamp(24px, 6.6vw, 34px)/1.55 var(--serif); }
+      .x-reflect__hint { font: var(--type-small); color: var(--ink-2); }
+      .x-reflect .x-key { min-width: 160px; min-height: 52px; font-size: 16px; }
+
+      .x-toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); background: var(--ink); color: var(--paper); font: var(--type-label); padding: 12px 20px; border-radius: var(--r-pill); z-index: 60; max-width: calc(100% - 2 * var(--gutter)); text-align: center; }
+      .x-toast[hidden] { display: none; }
+      button.btn { cursor: pointer; font: inherit; min-width: var(--tap); min-height: var(--tap); }
+
+      .x-av { width: 160px; height: 160px; margin: 0 auto; transition: opacity 0.3s ease; }
+      .x-av svg { display: block; }
+      .x-av.is-fade { opacity: 0; }
+
+      /* 人生时刻：信、证、纸条、来电 */
+      .x-mo { position: fixed; inset: 0; z-index: 55; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); background-color: rgb(40 30 20 / 0.6); overflow: hidden; animation: x-fade 0.35s ease both; }
+      .x-mo[hidden] { display: none; }
+      /* 卡片可收缩、内部滚动；按钮永远在卡片下方、不被压缩 */
+      .x-mo__card { flex: 0 1 auto; min-height: 0; width: min(340px, 100%); max-height: calc(100vh - 120px); max-height: calc(100dvh - 120px); overflow-y: auto; -webkit-overflow-scrolling: touch; background-color: var(--paper); animation: x-up 0.45s ease both; }
+      .x-mo__opts, .x-mo__go { flex: none; position: relative; z-index: 1; }
+      .x-mo__go { min-width: 140px; }
+      .x-mo__t { margin: 0 0 10px; font: 600 17px/1.3 var(--serif); }
+      .x-mo__b p { margin: 0; min-height: 1em; }
+      .x-mo--letter .x-mo__card { position: relative; padding: 22px 22px 30px 26px; color: #3d2b1f; background-color: #fbf2d9; background-image: repeating-linear-gradient(transparent 0 31px, rgb(120 90 60 / 0.22) 31px 32px); background-position: 0 14px; background-attachment: local; border-radius: 3px; box-shadow: 0 10px 24px rgb(40 25 10 / 0.3); transform: rotate(-1.6deg); font: 400 20px/32px "Ma Shan Zheng", "ZCOOL KuaiLe", "Kaiti SC", "STKaiti", KaiTi, cursive; }
+      .x-mo--letter .x-mo__t { font: inherit; font-size: 15px; color: #8a6a4a; margin: 0; line-height: 32px; }
+      .x-mo__seal { position: absolute; right: 16px; bottom: 12px; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: #f6d9c8; font: 600 18px/1 var(--serif); background: radial-gradient(circle at 35% 30%, #c8493c, #8e2219 70%); box-shadow: 0 2px 0 #6e1810, inset 0 0 0 4px rgb(0 0 0 / 0.12); transform: rotate(12deg); }
+      .x-mo--cert .x-mo__card { padding: 14px; background-color: #b5221b; border-radius: 8px; box-shadow: 0 12px 26px rgb(60 0 0 / 0.35); }
+      .x-mo__cover { border: 2px solid #d9b25c; outline: 1px solid #d9b25c; outline-offset: -6px; border-radius: 4px; padding: 14px 12px 12px; display: grid; justify-items: center; gap: 10px; }
+      .x-mo__cover .x-mo__t { margin: 0; color: #f1cf7a; font: 600 26px/1.2 var(--serif); letter-spacing: 0.3em; text-indent: 0.3em; }
+      .x-mo__emb { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #f1cf7a; display: grid; place-items: center; color: #f1cf7a; font: 600 16px/1 var(--serif); }
+      .x-mo__page { width: 100%; background-color: #fffdf8; color: #3a2a20; border-radius: 3px; padding: 14px 16px; font: 400 15px/1.75 var(--serif); }
+      .x-mo--baby .x-mo__card { padding: 20px 20px 18px; text-align: center; color: #5a3540; background-color: #fde8ee; border: 2px dashed #eaa8ba; border-radius: 18px; box-shadow: 0 10px 24px rgb(120 50 70 / 0.22); font: 400 15px/1.75 var(--serif); }
+      .x-mo--baby .x-mo__t { color: #b4566f; letter-spacing: 0.2em; }
+      .x-mo__foot { width: 44px; height: 56px; margin: 0 auto 6px; display: block; fill: #e48aa3; }
+      /* 纸条：外层只负责旋转 + 阴影（clip-path 会把同一元素的 drop-shadow 裁掉），内层 .x-mo__paper 是不透明的纸面，带撕边并在内部滚动 */
+      .x-mo--note .x-mo__card { position: relative; display: flex; flex-direction: column; width: min(300px, 100%); padding: 0; color: #2f3a4a; background-color: transparent; transform: rotate(1.4deg); font: 400 17px/28px "ZCOOL KuaiLe", "Ma Shan Zheng", "Kaiti SC", "STKaiti", KaiTi, cursive; filter: drop-shadow(0 8px 14px rgb(30 30 40 / 0.25)); overflow: visible; }
+      .x-mo__paper { flex: 0 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 30px 20px 18px 40px; background-color: #fffef7; background-image: linear-gradient(90deg, transparent 28px, rgb(214 80 80 / 0.5) 28px 29.5px, transparent 29.5px), repeating-linear-gradient(transparent 0 27px, rgb(80 120 180 / 0.25) 27px 28px); background-position: 0 0, 0 22px; background-attachment: local, local; clip-path: polygon(0 6px, 5% 0, 11% 5px, 17% 1px, 24% 6px, 31% 0, 38% 5px, 46% 1px, 53% 6px, 60% 0, 68% 5px, 75% 1px, 82% 6px, 89% 0, 95% 5px, 100% 1px, 100% 100%, 0 100%); }
+      .x-mo--note .x-mo__t { font: inherit; font-size: 14px; color: #7a8698; margin: 0; }
+      .x-mo__tape { position: absolute; z-index: 1; top: -8px; left: 50%; width: 84px; height: 22px; transform: translateX(-50%) rotate(-4deg); background: rgb(240 222 160 / 0.75); box-shadow: 0 1px 2px rgb(0 0 0 / 0.1); }
+      .x-mo--call .x-mo__card { padding: 26px 22px 24px; text-align: center; color: #f3f4f6; background-color: #1f2630; background-image: linear-gradient(170deg, #2a3340, #151a21); border-radius: 28px; box-shadow: 0 14px 30px rgb(0 0 0 / 0.4); }
+      .x-mo__lbl { margin: 0; font: 13px/1 var(--sans); letter-spacing: 0.3em; color: #9aa6b4; }
+      .x-mo--call .x-mo__t { margin: 10px 0 18px; font: 600 22px/1.3 var(--serif); color: #fff; }
+      .x-mo__ring { position: relative; width: 72px; height: 72px; margin: 0 auto 20px; border-radius: 50%; background: #3fae6a; display: grid; place-items: center; }
+      .x-mo__ring svg { width: 30px; height: 30px; fill: #fff; }
+      .x-mo__ring::before, .x-mo__ring::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid #3fae6a; animation: x-ring 2.4s ease-out infinite; }
+      .x-mo__ring::after { animation-delay: 1.2s; }
+      .x-mo--call .x-mo__b { font: 400 17px/1.75 var(--serif); color: #e8ebef; opacity: 0; transition: opacity 0.8s ease; }
+      .x-mo--call .x-mo__b.is-in { opacity: 1; }
+      @keyframes x-ring { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.9); opacity: 0; } }
+      @keyframes x-out { to { opacity: 0; transform: translateY(-40px); } }
+      .x-snaps { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+      .x-snaps figure { margin: 0; display: grid; justify-items: center; gap: 4px; font: var(--type-caption); color: var(--ink-2); }
+      .x-snaps svg { width: 64px; height: 64px; filter: grayscale(1); }
+
+      @keyframes x-in { from { opacity: 0; transform: translateY(-6px); } }
+      @keyframes x-up { from { opacity: 0; transform: translateY(16px); } }
+      @keyframes x-fade { from { opacity: 0; } }
+      /* 结局：逐段浮现 */
+      #s-end .x-rv { opacity: 0; transform: translateY(8px); transition: opacity 0.9s ease, transform 0.9s ease; }
+      #s-end .x-rv.is-in { opacity: 1; transform: none; }
+      #s-end .x-rv[hidden] { display: none; }
+      .x-end-lbl { margin: 0 0 10px; font: 500 13px/1 var(--serif); letter-spacing: 0.3em; color: var(--ink-2); text-align: center; }
+      .x-epi { text-align: center; padding: 8px 0; }
+      .x-epi__t { margin: 0 auto; max-width: 20em; font: 600 clamp(24px, 6.6vw, 34px)/1.55 var(--serif); color: var(--ink); text-wrap: balance; }
+      .x-epi__q { margin: 12px auto 0; max-width: 24em; font: 400 15px/1.7 var(--serif); color: var(--ink-2); text-wrap: balance; }
+      .x-slip { width: min(220px, 100%); margin: 0 auto; padding: 22px 18px 26px; border: 4px double var(--ink); border-radius: 3px; background: var(--paper); text-align: center; display: grid; justify-items: center; gap: 14px; }
+      .x-slip .x-end-lbl { margin: 0; }
+      .x-slip__sign { margin: 0; writing-mode: vertical-rl; text-orientation: upright; font: 600 clamp(34px, 10vw, 44px)/1.15 var(--serif); letter-spacing: 0.08em; min-height: 4.4em; color: var(--ink); }
+      .x-slip__verse { margin: 0; padding-top: 12px; border-top: 1px solid var(--line-soft); font: 400 15px/1.7 var(--serif); color: var(--ink-2); }
+      .x-hl { max-width: 28em; width: 100%; margin: 0 auto; }
+      .x-hl [hidden] { display: none; }
+      .x-hl ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+      .x-hl li { padding: 8px 0 8px 14px; border-left: 2px solid var(--line); font: 400 16px/1.5 var(--serif); color: var(--ink); }
+      .x-hl__n { margin: 12px 0 0; font: var(--type-small); color: var(--ink-2); text-align: center; }
+      /* 家庭卡：手机上一屏放下（375×667） */
+      @media (max-width: 600px) {
+        .x-fam { padding-block: 8px 16px; }
+        .x-fam .head { gap: 2px; margin-bottom: 8px; }
+        .x-fam .head h2 { font-size: 22px; }
+        .x-fam .x-card { padding: 12px 16px; gap: 8px; }
+        .x-fam .x-lad { gap: 4px; }
+        .x-fam .x-lad__bars i { height: calc(4px + var(--h) * 1.3px); }
+        .x-fam .x-lad__bars--named li { grid-template-rows: 16px auto; gap: 3px; }
+        .x-fam .x-lad__bars--named li span { line-height: 1; min-height: 4em; }
+        .x-fam .x-big { font-size: 22px; line-height: 1.2; }
+        .x-fam .x-facts { gap: 4px 12px; font: 14px/1.25 var(--sans); }
+        .x-fam .x-odds { padding: 8px 12px; gap: 4px; }
+        .x-fam .x-odds h4 { font-size: 15px; }
+        .x-fam .x-card .x-odds p { font: 14px/1.45 var(--serif); }
+        .x-fam .x-card .x-odds .x-odds__src { font: var(--type-caption); padding-top: 4px; }
+        .x-fam .x-card .x-odds .x-odds__two p { font: 14px/1.45 var(--sans); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #s-end .x-rv { transition: none; transform: none; }
+        html, body::after, .x-bar b, .x-av { transition: none; }
+        .x-lab, .x-p { transition: none; }
+        .x-ur.is-hit, .x-hl--pulse.is-go { animation: none; }
+        .x-born, .x-born::before, .x-born.is-busy::after, .x-born.is-busy svg, .x-born.is-pop { animation: none; }
+        .x-hl--pulse.is-go { opacity: 1; }
+        .x-yr, .x-sheet, .x-reflect, .x-yb, .x-yb .x-ln, .x-mo, .x-mo__card, .x-mo__ring::before, .x-mo__ring::after { animation: none; }
+        .x-yb, .x-yb .x-ln { transition: none; }
+        .x-hist, .x-mo--call .x-mo__b { transition: none; }
+      }
+      /* 来源注：每张卡一行小字 */
+      .x-card .x-odds .x-odds__src, .x-fam .x-card .x-odds .x-odds__src, .x-draw__src { font: var(--type-caption); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-wrap: nowrap; }
+      .x-srcline:first-of-type { flex: 1 1 100%; }
+      .x-srcline { margin: 0; font: var(--type-caption); color: var(--text-secondary); }
+      .x-srcline span { white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div class="page" id="top">
+      <main class="main">
+        <!-- 版本选择 -->
+        <section class="section x-screen" id="s-pick">
+          <div class="head">
+            <p class="head__eyebrow">选择版本</p>
+            <h2>你想在哪里过完一生？</h2>
+          </div>
+          <div class="x-grid">
+            <div class="x-card">
+              <h3>地球 online（国服公测版）</h3>
+              <p>按 34 个省级行政区 + 城乡的真实统计，过完一次中国人生</p>
+              <div class="links"><button class="btn" data-go="s-home">进入</button></div>
+            </div>
+            <div class="x-card x-dim" id="world" role="button" tabindex="0">
+              <h3>地球 online（国际版）</h3>
+              <p><span class="chip">正在全力开发中</span></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 中国版首页 -->
+        <section class="hero x-screen" id="s-home" hidden>
+          <div class="hero__copy">
+            <p class="hero__eyebrow">国服公测 · 一人一次</p>
+            <h1>地球 online（国服公测版）</h1>
+            <p class="hero__sub">每年约 971.5 万个婴儿在中国出生。你将成为其中一个。生在哪个省、城市还是农村，你无法选择。</p>
+            <div class="links"><button class="btn" id="b-born">去投胎</button></div>
+            <div class="x-softbox">
+              <label class="x-soft"><input type="checkbox" id="soft" aria-describedby="soft-help" /> 温和模式</label>
+              <p class="x-soft__help" id="soft-help" aria-live="polite">当前：正常模式。人生的生老病死都会完整讲述。</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 投胎：中国地图 -->
+        <section class="x-screen x-draw" id="s-draw" hidden>
+          <div class="x-draw__in">
+            <h2 class="x-draw__t" id="d-title">你会出生在哪里？</h2>
+            <div class="x-mapwrap">
+              <div class="x-mapbox" id="mapbox"><svg class="x-map" id="map" viewBox="0 0 1000 689" preserveAspectRatio="xMidYMid meet" role="img" aria-label="中国地图：34 个省级行政区按 2024 年出生人口占比着色"></svg></div>
+              <p class="x-key-scale" id="m-key" aria-hidden="true"></p>
+              <!-- 数据：国家统计局及各省 2024 年统计公报；台湾、香港、澳门为当地统计部门 2024 年数据 -->
+              <p class="x-draw__src">数据：国家统计局 2024 出生人口（测算）</p>
+            </div>
+            <p class="x-draw__res" id="d-res" aria-live="polite"></p>
+            <div class="x-bornbox">
+              <button class="x-born" id="b-draw" type="button">
+                <svg viewBox="0 0 48 48" aria-hidden="true">
+                  <path d="M30 23 Q29 9 40 9 Q43 16 41 23" />
+                  <path class="x-born__fill" d="M8 23 H41 Q40 36 24.5 36 Q9 36 8 23Z" />
+                  <circle cx="19" cy="18" r="5.5" />
+                  <path d="M16.6 18.4 q1 1 2 0 M20.4 18.4 q1 1 2 0" stroke-width="1.6" />
+                  <path d="M14 29 q5 -3 10 0 q5 3 10 0" stroke-width="1.6" />
+                  <path d="M15 35 l-3 5 M34 35 l3 5 M7 39 Q24 46 42 39" />
+                </svg>
+                <span>出生</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 家庭 -->
+        <section class="section x-screen x-fam" id="s-fam" hidden>
+          <div class="head"><p class="head__eyebrow">投胎结果 · 家庭</p><h2>你出生的家庭</h2></div>
+          <div class="x-card">
+            <p class="x-big" id="f-label"></p>
+            <div class="x-lad" id="f-lad"></div>
+            <dl class="x-facts" id="f-facts"></dl>
+            <div class="x-odds" id="f-odds"></div>
+            <div class="links"><button class="btn" id="b-fam">看看出生卡</button></div>
+          </div>
+        </section>
+
+        <!-- 出生 -->
+        <section class="section x-screen" id="s-birth" hidden>
+          <div class="head"><p class="head__eyebrow">投胎结果</p><h2>你出生在……</h2></div>
+          <div class="x-card" id="bcard" hidden>
+            <div class="x-av" id="b-av"></div>
+            <p class="x-big" id="b-name"></p>
+            <dl class="x-facts" id="b-facts"></dl>
+            <div class="x-odds" id="b-odds"></div>
+            <div class="links"><button class="btn" id="b-start">开始人生</button></div>
+          </div>
+        </section>
+
+        <!-- 人生 -->
+        <section class="x-screen x-life" id="s-life" hidden>
+          <div class="x-main">
+            <div class="x-top">
+              <p class="x-now"><span class="x-age"><span id="l-age">0</span><small>岁</small></span><span id="l-year"></span><span class="x-stamp" id="l-mood" aria-label="此刻心境">温馨</span></p>
+              <div class="x-tools">
+                <div class="x-seg" role="group" aria-label="时间流速">
+                  <button class="x-key x-ico" id="b-pause" aria-pressed="false" aria-label="暂停"></button>
+                  <button class="x-key x-spd" id="b-spd" aria-haspopup="true" aria-expanded="false" aria-label="速度 1×">1×</button>
+                </div>
+                <div class="x-pop" id="spd-pop" role="group" aria-label="选择速度" hidden>
+                  <button class="x-key" data-speed="1" aria-pressed="true">1×</button>
+                  <button class="x-key" data-speed="2" aria-pressed="false">2×</button>
+                  <button class="x-key" data-speed="4" aria-pressed="false">4×</button>
+                  <button class="x-key" data-speed="8" aria-pressed="false">8×</button>
+                  <button class="x-key" data-speed="16" aria-pressed="false">16×</button>
+                </div>
+                <button class="x-key x-ico" id="b-skip" aria-label="跳到下一个抉择" title="跳到下一个抉择"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5v13l9-6.5zM12 5.5v13l8-6.5z"/><rect x="19.5" y="5.5" width="2.2" height="13" rx="1"/></svg></button>
+              </div>
+            </div>
+            <div class="x-stat">
+              <div class="x-av" id="l-av"></div>
+              <div class="x-meta">
+                <p class="x-who" id="l-who"></p>
+                <div class="x-bwrap"><div class="x-bars" id="bars"></div><button class="x-q" id="b-help" aria-label="四项数值说明" title="四项数值说明"><span aria-hidden="true">?</span></button></div>
+                <p class="x-money" id="l-money">存款 0 万</p>
+              </div>
+            </div>
+            <div class="x-today" id="today" aria-live="polite"></div>
+            <div class="x-bot">
+              <div class="x-fbox" id="f-box" hidden>
+                <div class="x-focus" id="focus" role="group" aria-label="今年重心"></div>
+              </div>
+              <button class="x-key x-histbtn" id="b-hist" aria-expanded="false" aria-controls="hist">人生记录</button>
+            </div>
+          </div>
+          <div class="x-scrim" id="scrim" hidden></div>
+          <aside class="x-hist" id="hist" aria-label="人生记录">
+            <div class="x-hist__head"><h3>人生记录</h3><button class="x-key x-ico x-close" id="b-hclose" aria-label="关闭"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/></svg></button></div>
+            <div class="x-log"><ol class="x-feed" id="feed"></ol></div>
+          </aside>
+        </section>
+
+        <!-- 结局 -->
+        <section class="section x-screen" id="s-end" hidden>
+          <div class="head"><p class="head__eyebrow">地球 online（国服公测版）· 一生结束</p><h2 id="e-title"></h2></div>
+          <div class="x-rv x-epi" data-step="0"><p class="x-end-lbl">墓志铭</p><p class="x-epi__t" id="e-epi"></p><p class="x-epi__q" id="e-epiq" hidden></p></div>
+          <div class="x-rv" data-step="1"><div class="x-slip"><p class="x-end-lbl">人生签</p><p class="x-slip__sign" id="e-sign"></p><p class="x-slip__verse" id="e-verse"></p></div></div>
+          <div class="x-rv x-hl" data-step="2"><p class="x-end-lbl">这一生的高光</p><ul id="e-hl"></ul><p class="x-hl__n" id="e-stories"></p></div>
+          <div class="x-av x-rv" data-step="3" id="e-av"></div>
+          <div class="x-snaps x-rv" data-step="3" id="e-snaps" aria-label="各阶段的样子"></div>
+          <section class="stats x-rv" data-step="3">
+            <div class="stat"><span class="stat__fig" id="e-age"></span><span class="stat__label">享年</span></div>
+            <div class="stat"><span class="stat__fig" id="e-inc"></span><span class="stat__label">一生总收入</span></div>
+          </section>
+          <section class="stats x-rv" data-step="3">
+            <div class="stat"><span class="stat__fig" id="e-peak"></span><span class="stat__label">存款最高</span></div>
+            <div class="stat"><span class="stat__fig" id="e-low"></span><span class="stat__label">最低点</span></div>
+            <div class="stat"><span class="stat__fig" id="e-net"></span><span class="stat__label">最终净资产（含房产）</span></div>
+          </section>
+          <p class="x-big x-rv" data-step="3" id="e-where" style="font: var(--type-heading)"></p>
+          <p class="x-rv" data-step="3" id="e-fam" style="font: var(--type-body); color: var(--ink-2); margin: 0"></p>
+          <div class="links x-rv" data-step="3"><button class="btn" id="b-again">重新投胎</button><button class="btn" id="b-share">分享这一生</button></div>
+        </section>
+      </main>
+      <footer class="foot">
+        <!-- 数据说明：国家统计局第七次人口普查、《中国统计年鉴2025》；台湾、香港、澳门为当地统计部门 2024 年数据，部分为近似值；出生性别比按国家卫健委 2025 年 111.5（七普 111.3），城镇新生儿占比按城镇化率减 5 个百分点测算；家庭收入先在本省城镇或农村的分布里抽（国家统计局 2024：城镇人均中位 49,302、均值 54,188 元，农村中位 19,605、均值 23,119 元，各省城乡收入为约数），再按家庭月收入分成十级：中间各级按国家统计局 2024 年居民收入（中位数 34,707 元/人）折算；顶部按 CHFS、胡润财富报告估算；家庭 = 人均 × 2.8 -->
+        <p class="x-srcline">数据：国家统计局、卫健委、CHFS、胡润<span> · 部分为测算</span></p>
+        <p class="x-srcline">地球 online（国服公测版）· 适合15岁以上</p>
+        <a class="badge" href="https://hark.com/" target="_blank" rel="noopener"><span class="hark-mark"></span><span>built by hark</span></a>
+      </footer>
+    </div>
+
+    <div class="x-modal" id="modal" hidden><div class="x-sheet" role="dialog" aria-modal="true" aria-labelledby="m-title"><h3 id="m-title"></h3><p class="fineprint" id="m-sub"></p><div class="x-bars" id="m-opts"></div></div></div>
+    <div class="x-modal" id="help" hidden><div class="x-sheet x-help" role="dialog" aria-modal="true" aria-labelledby="h-title"><h3 id="h-title">四项数值</h3><dl>
+      <dt>健康</dt><dd>30 岁前基本不掉，之后随年龄越掉越快，60 岁后最快。务农、打工或长期“卷”掉得更快；当年养生、运动能放慢。健康越低，越容易生病和早走。</dd>
+      <dt>幸福</dt><dd>每个人有天生的心情底色，好事坏事过去后会慢慢回到底色。抉择、事件和每年的重心会推高或拉低它。</dd>
+      <dt>知识</dt><dd>由底子（上学攒下的，成年后慢慢褪，但不低于巅峰的六成）和活知识（学习类重心、兴趣、工作用脑，25 岁后不用就忘，年纪越大忘得越快）合成，各占约一半。天资、年龄、心情、健康决定学得多快，越高越难涨；亲人离世、大病、AI 抢活、辅导作业、晚年记性变差都会扣活知识。知识影响升学、高考和理财。<b id="h-k" style="display:block;margin-top:4px"></b></dd>
+      <dt>人情</dt><dd>三个圈子加权：家人、朋友、同事社会。18 岁前看家人和朋友，工作后三者并重，退休后家人最重。不经营会回落到一般水平，越高越难涨；每个人天生合群程度不同。离乡、毕业冷落朋友；离婚、争吵伤家人；失业、退休让同事圈散掉。心情差时三个圈子都会变淡。家人朋友越亲，借钱越容易、丧亲走出来越快；人情低于 30 会孤独伤身。<b id="h-r" style="display:block;margin-top:4px"></b></dd>
+      <dt>收入</dt><dd>看去处（打工、白领、公务员、务农、创业）、职级和省份。学历溢价为测算值，参照毕业生薪酬调查的相对倍数：以高中为 1，职校 1.05、专科 1.15、普通本科 1.45、211 1.7、985 1.9、C9 2.1，考研再升一档；公务员溢价只算四成，务农、创业不看学历。学历也影响考公把握、进大厂机会、升职快慢和裁员风险。</dd>
+    </dl><div class="links"><button class="btn" id="b-hok">知道了</button></div></div></div>
+    <div class="x-reflect" id="reflect" role="dialog" aria-modal="true" aria-labelledby="r-q" hidden>
+      <div class="x-reflect__card">
+        <p class="x-reflect__age" id="r-age"></p>
+        <p class="x-reflect__q" id="r-q"></p>
+        <p class="x-reflect__hint">不必回答，想一想就好。</p>
+        <button class="x-key" id="r-go">继续</button>
+      </div>
+    </div>
+    <div class="x-mo" id="moment" role="dialog" aria-modal="true" aria-label="人生时刻" hidden><div class="x-mo__card" id="mo-card"></div><div class="x-mo__opts" id="mo-opts" hidden></div><button class="x-key x-mo__go" id="mo-go">收好</button></div>
+    <div class="x-toast" id="toast" role="status" hidden></div>
+
+    <script type="application/json" id="cnmap" src="chinamap.json"></script>
+    <script src="hark.js"></script>
+    <script src="letters-pack.js"></script>
+    <script src="story.js"></script>
+    <script>
+      // 省,出生(万),预期寿命,城镇化率%,梯队,常住人口(万),出生率‰ — 2024 年各省统计公报
+      const RAW = "北京,13.3,82.49,87.8,1,2183,6.09;上海,11.8,82.55,89.5,1,2480,4.75;天津,6.8,81.3,85.5,1,1364,4.99;浙江,41,80.19,74.8,2,6670,6.17;江苏,42.63,79.32,75.5,2,8526,5.00;广东,113.3,79.31,75.9,3,12780,8.89;山东,64.9,79.18,67,2,10080.2,6.42;海南,9.8,79.05,62.5,2,1048,9.37;福建,29.1,78.29,71,2,4193,6.95;辽宁,18,78.68,73.5,2,4155,4.32;重庆,19.1,78.56,71.7,2,3190,5.99;吉林,9.7,78.37,64.6,2,2317,4.17;黑龙江,10.2,78.25,67,2,3029,3.35;广西,42,78.06,57,3,5013,8.37;湖北,31.4,78,65.5,2,5834,5.38;安徽,37.8,77.96,61.5,3,6123,6.17;四川,53.6,77.95,60,3,8364,6.41;山西,24,77.91,65,3,3446,6.94;湖南,38.6,77.88,61.8,3,6539,5.89;陕西,29.1,77.8,65.7,2,3953,7.36;河北,44,77.75,63,3,7378,5.90;江西,30,77.64,63,3,4502,6.65;河南,76.2,77.6,59.2,3,9785,7.78;内蒙古,13.2,77.56,69.6,2,2388,5.52;宁夏,8,76.58,67.3,2,729,10.97;新疆,24.6,75.65,59.6,2,2623,9.42;甘肃,19.69,75.64,56,3,2458,8.00;贵州,41.5,75.2,56,3,3860,10.74;云南,40.2,74.02,53,3,4655,8.62;青海,6,73.96,62.8,2,593,10.11;西藏,5.1,72.19,38.9,2,370,13.87"
+        // 台湾、香港、澳门：当地统计部门 2024 年数据
+        + ";台湾,13.49,80.2,80,1,2340,5.76;香港,3.67,85.5,100,1,752.4,4.9;澳门,0.36,85.3,100,1,68.83,5.3";
+      const PROV = RAW.split(";").map((r) => { const [n, b, le, u, t, pop, br] = r.split(","); return { n, b: +b, le: +le, u: +u, t: +t, pop: +pop, br: +br }; });
+      // 各地出生数据来源与户籍称呼
+      const SRC = { 台湾: "台湾地区内政主管部门 2024 年户口统计", 香港: "香港特区政府统计处", 澳门: "澳门特区统计暨普查局" };
+      const RES = { 台湾: "台湾居民", 香港: "香港居民", 澳门: "澳门居民" };
+      const SAR = (p) => p.n === "香港" || p.n === "澳门";
+      // 全国口径：31 省 954 万 + 台湾 13.49 万 + 香港 3.67 万 + 澳门 0.36 万 = 971.5 万；出生率 = 出生 / 总人口
+      const CN = { births: 971.5, pop: 140828 + 2340 + 752.4 + 68.83 };
+      CN.br = +((CN.births / CN.pop) * 1000).toFixed(2);
+      // 户籍：港澳居民没有城乡之分；台湾居民带城乡
+      const huji = (s) => (SAR(s.p) ? RES[s.p.n] : s.p.n === "台湾" ? `台湾居民（${s.urban ? "城镇" : "农村"}）` : `${s.urban ? "城镇" : "农村"}户口`);
+      const place = (s) => (SAR(s.p) ? s.p.n : s.p.n + (s.urban ? "城镇" : "农村"));
+      [...PROV].sort((x, y) => y.br - x.br).forEach((p, i) => (p.rank = i + 1));
+
+      // ===== 家庭背景（测算）=====
+      // 全国家庭人均可支配收入分位曲线（元/年）：中段 P10–P80 按国家统计局 2024 年（中位数 34,707）折算；顶部按 CHFS、胡润财富报告估算
+      const DEC_P = [[0, 2500], [10, 9000], [20, 16000], [30, 22000], [40, 28300], [50, 34700], [60, 42000], [70, 51000], [80, 65000], [93, 128571], [99, 428571], [99.9, 1285714], [99.98, 3571429], [99.997, 17857143], [99.999, 35714286], [100, 2e8]];
+      const HH = 2.8; // 户均人口：家庭年收入 ≈ 人均 × 2.8
+      // 十级家庭（S.fam 0–9 = 第 1–10 级），按家庭月收入分；人均年收入分界 = 家庭月收入 × 12 / 2.8；sh 是全国家庭份额目标（测算）
+      const FAM = [
+        { n: "很困难家庭", s: "很困难", m: "月收入 3,000 以下", d: "存款约 0–3 万", sh: 0.15 },
+        { n: "困难家庭", s: "困难", m: "月收入 3,000–8,000", d: "存款 0–5 万", sh: 0.35 },
+        { n: "普通家庭", s: "普通", m: "月收入 8,000–1.5 万", d: "存款 5–10 万", sh: 0.3 },
+        { n: "小康家庭", s: "小康", m: "月收入 1.5 万–3 万", d: "存款 10–40 万", sh: 0.13 },
+        { n: "潇洒活家庭", s: "潇洒活", m: "月收入 3 万–10 万", d: "存款 40–100 万", sh: 0.06 },
+        { n: "高收入家庭", s: "高收入", m: "月收入 10 万–30 万", d: "存款 100–200 万", sh: 0.009 },
+        { n: "小富家庭", s: "小富", m: "月收入 30 万–83 万（年入约 360 万–1,000 万）", d: "存款 200–500 万", sh: 0.001 },
+        { n: "中富家庭", s: "中富", m: "年收入 1,000 万–5,000 万", d: "", sh: 0.0002 },
+        { n: "巨富家庭", s: "巨富", m: "年收入 5,000 万–1 亿", d: "", sh: 0.00002 },
+        { n: "顶级富豪家庭", s: "顶级富豪", m: "年收入 1 亿以上", d: "", sh: 0.00001 },
+      ];
+      const LV_CUT = [3000, 8000, 15000, 30000, 100000, 300000].map((m) => (m * 12) / HH).concat([1e7, 5e7, 1e8].map((y) => y / HH));
+      const levelOf = (v) => LV_CUT.filter((c) => v >= c).length;
+      const B_ALL = PROV.reduce((s, p) => s + p.b, 0);
+
+      // ===== 出生：性别 × 城乡（测算）=====
+      // 出生人口性别比：2025 年 111.5（国家卫健委公报；七普 2020 为 111.3）。七普研究：江西、海南偏高，东北、新疆接近 106
+      // 台湾、香港、澳门用当地出生性别比；其余省份统一抬一点，使大陆按出生人数加权仍是 111.5
+      const SRB_X = { 江西: 118, 海南: 117, 辽宁: 106, 吉林: 106, 黑龙江: 106, 新疆: 106, 台湾: 107, 香港: 108, 澳门: 108 };
+      const SRB_BASE = (() => {
+        const ML = PROV.filter((p) => !["台湾", "香港", "澳门"].includes(p.n)), Bm = ML.reduce((s, p) => s + p.b, 0);
+        const boyAt = (b0) => ML.reduce((s, p) => { const r = SRB_X[p.n] || b0; return s + (p.b * r) / (100 + r); }, 0) / Bm;
+        let lo = 100, hi = 125; for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; boyAt(m) < 111.5 / 211.5 ? (lo = m) : (hi = m); } return (lo + hi) / 2;
+      })();
+      const srb = (p) => SRB_X[p.n] || SRB_BASE;
+      const boyP = (p) => srb(p) / (100 + srb(p));
+      // 城镇新生儿占比 = 城镇化率 − 5 个百分点（农村生育率更高；全国约 61–62% 的新生儿在城镇，测算）；港澳 100%
+      const uOf = (p) => (SAR(p) ? 1 : Math.max(0, p.u - 5) / 100);
+      // 四格：城镇男孩 · 城镇女孩 · 农村男孩 · 农村女孩（港澳只有男孩、女孩）
+      const birthCells = (p) => { const u = uOf(p), m = boyP(p); return [[1, 1, u * m], [1, 0, u * (1 - m)], [0, 1, (1 - u) * m], [0, 0, (1 - u) * (1 - m)]].filter((c) => c[2] > 0); };
+      // 唯一一次性别抽签：和城乡一起抽
+      function drawBirth(p) { const c = birthCells(p), i = wpick(c.map((x) => x[2])); return { urban: !!c[i][0], male: !!c[i][1] }; }
+
+      // ===== 家庭收入：城镇、农村各一条梯子，再放到全国十级上（测算）=====
+      // 家庭人均可支配收入在本省城/乡分布里抽：ln Q(z) = ln 中位 + z·(z<0 ? σ下 : σ上) + 两段上尾弯曲 − 下尾弯曲，z = Φ⁻¹(城乡内排名)
+      // 参数拟合（work/fit10.js）：国家统计局 2024 农村中位 19,605、城镇中位 49,302（强约束），五等份均值（弱）；
+      // 出生加权的混合分布落在 DEC_P 中段分位点上，并让十级份额 ≈ 15 / 35 / 30 / 13 / 6 / 0.9 / 0.1 / 0.02 / 0.002 / 0.001 %
+      // 农村到第 6 级及以上极少（约占该级 0.6%），只有乡镇企业主、养殖大户、城中村拆迁三条路
+      const LADDER = [
+        [Math.log(21084), 0.601, 0.4204, 2.1837, 0.7106, 0.3915, 0.6543, 3.72, 0.6475], // 农村
+        [Math.log(47752), 0.3363, 0.6981, 0.5119, 0.2377, 0.7318, 1.2938, 2.8588, 0.3487], // 城镇
+      ];
+      const lnQ = (P, z) => P[0] + z * (z < 0 ? P[1] : P[2]) + (z > P[3] ? P[4] * (z - P[3]) ** 2 : 0) - (z < -P[5] ? P[6] * (z + P[5]) ** 2 : 0) + (z > P[7] ? P[8] * (z - P[7]) ** 2 : 0);
+      const Phi = (z) => { const t = 1 / (1 + 0.2316419 * Math.abs(z)), d = 0.3989423 * Math.exp(-z * z / 2), p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - p : p; };
+      const ZM = 5;
+      const zAt = (P, l) => { let lo = -ZM, hi = ZM; if (l <= lnQ(P, lo)) return lo; if (l >= lnQ(P, hi)) return hi; for (let i = 0; i < 44; i++) { const m = (lo + hi) / 2; lnQ(P, m) < l ? (lo = m) : (hi = m); } return (lo + hi) / 2; };
+      // 各省城镇 / 农村居民人均可支配收入（元，2024 约数）→ 相对全国城镇 54,188 / 农村 23,119 的倍数；港澳台按当地收入折算（约）
+      const UR_INC = { 北京: [92000, 40000], 上海: [94000, 45000], 浙江: [80000, 43000], 江苏: [68000, 32000], 天津: [57000, 31000], 广东: [62000, 26000], 福建: [60000, 28000], 山东: [54000, 25000], 内蒙古: [52000, 23000], 辽宁: [49000, 23000], 重庆: [49000, 22000], 湖北: [47000, 23000], 安徽: [50000, 23000], 湖南: [50000, 22000], 江西: [48000, 23000], 海南: [45000, 22000], 河北: [46000, 22000], 四川: [47000, 21000], 陕西: [46000, 18000], 宁夏: [43000, 19000], 山西: [43000, 19000], 河南: [41000, 21000], 吉林: [39000, 21000], 黑龙江: [38000, 21000], 西藏: [53000, 21000], 广西: [44000, 19500], 新疆: [43000, 19500], 云南: [46000, 17500], 青海: [43000, 16500], 贵州: [44000, 15500], 甘肃: [42000, 14500] };
+      const UR_FX = { 台湾: [1.55, 2.6], 香港: [1.7, 1.7], 澳门: [1.9, 1.9] };
+      const incF = (p, urban) => (UR_FX[p.n] ? UR_FX[p.n][urban ? 0 : 1] : UR_INC[p.n][urban ? 0 : 1] / (urban ? 54188 : 23119));
+      // P(级 | 省, 城乡)：本省城/乡分布落在十级分界之间的比例；抽签也直接用它（drawFam 先按它抽级，再在级内抽收入），所以显示的数字和抽签一致
+      const CELL = new Map();
+      function famCell(p, urban) {
+        const key = p.n + (urban ? 1 : 0); if (CELL.has(key)) return CELL.get(key);
+        const P = LADDER[urban ? 1 : 0], lf = Math.log(incF(p, urban)), zc = LV_CUT.map((c) => zAt(P, Math.log(c) - lf));
+        const A = [1, ...zc.map((z) => 1 - Phi(z)), 0];
+        const c = { fam: A.slice(0, 10).map((a, i) => Math.max(0, a - A[i + 1])), z: [-ZM, ...zc, ZM] };
+        CELL.set(key, c); return c;
+      }
+      const famDist = (p, urban) => famCell(p, urban).fam;
+      const FAM_NAT = PROV.reduce((acc, p) => { const w = p.b / B_ALL, u = uOf(p), a = famDist(p, true), b = famDist(p, false); return acc.map((v, i) => v + w * (u * a[i] + (1 - u) * b[i])); }, Array(10).fill(0));
+      // 收入 → 全国百分位（DEC_P 的反函数）
+      const pctOf = (v) => { if (v <= DEC_P[0][1]) return 0; for (let i = 1; i < DEC_P.length; i++) { const [q0, v0] = DEC_P[i - 1], [q1, v1] = DEC_P[i]; if (v <= v1) return q0 + ((q1 - q0) * Math.log(v / v0)) / Math.log(v1 / v0); } return 99.9999; };
+      const invPhi = (u) => { let lo = -ZM, hi = ZM; for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; Phi(m) < u ? (lo = m) : (hi = m); } return (lo + hi) / 2; };
+      // 每 10,000 个：整数，千分位；不到 1 个写成“每 N 万个约 1 个”
+      const per1w = (v) => { const x = v * 1e4; if (x >= 1) return `约 <b>${Math.round(x).toLocaleString("en-US")}</b> 个`; if (x < 1e-4) return "不到 <b>1</b> 个（不到亿分之一）"; const n = 1 / x; return `不到 <b>1</b> 个（每 ${(n >= 10 ? Math.round(n) : +n.toFixed(1)).toLocaleString("en-US")} 万个约 1 个）`; };
+      const per1wN = (v) => (v * 1e4 < 1 ? "不到 <b>1</b> 个" : `<b>${Math.round(v * 1e4).toLocaleString("en-US")}</b> 个`);
+      // 级 → 第几级（1–10）
+      const decOf = (t) => t + 1;
+      // 父母学历 S.parEdu：0 初中及以下 · 1 高中中专 · 2 大专本科 · 3 高知；按级条件抽（七普大专+约 15.5%，新生儿父母更年轻，约四成）
+      const PED = [[66, 28, 5.6, 0.4], [46, 35, 18, 1.1], [17, 32, 47, 4], [6, 20, 63, 11], [5, 18, 63, 14], [5, 20, 60, 15], [5, 20, 60, 15], [5, 20, 60, 15], [5, 20, 60, 15], [5, 20, 60, 15]];
+      const PED_L = ["初中及以下", "高中、中专", "大专、本科", "高知"];
+      const FAM_L = FAM.map((f) => f.n);
+      const famLabel = (s, t = s.fam) => FAM_L[t];
+      const famShow = (s, t = s.fam) => (s.parEdu === 3 && t <= 4 ? "高知家庭 · " + famLabel(s, t).replace("家庭", "") : famLabel(s, t));
+      const famShort = (s) => (s.src && s.src !== "dual" ? (s.fam < s.fam0 ? "家道中落的" : "") + srcTag(s) : s.parEdu === 3 && s.fam <= 4 ? "高知家庭" : famLabel(s));
+      const wpick = (w) => { let r = Math.random() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < w.length; i++) if ((r -= w[i]) <= 0) return i; return w.length - 1; };
+      // 父母净资产（万）的粗估；第 6 级及以上用抽到的资产。BIZ：家里做生意的概率（再乘省份的经商氛围）
+      const ASSET = [3, 22, 97, 280, 590], BIZ = [0.04, 0.092, 0.203, 0.37, 0.474, 0.6, 0.75, 0.9, 0.9, 0.9];
+      // 顶层位置 S.top（沿用旧的四格含义）：第 4 级 0 · 第 5 级 1 · 第 6 级 2 · 第 7 级及以上 3；第 3 级及以下 −1
+      const topOf = (t) => (t < 3 ? -1 : Math.min(3, t - 3));
+      const rankTxt = (s) => `第 ${s.fam + 1} 级 · ${famLabel(s)}`;
+      // 家底来源 S.src（第 3 级的上段及以上才抽）：企业主 biz · 高管金领 exec · 房二代/拆迁 fang · 体制内干部 cadre · 专业人士 pro · 职业投资 inv · 双职工 dual
+      // 胡润 2025：高净值家庭 企业主 53%、金领 35%（这里拆成高管 30 + 专业人士 5）、职业投资 9%（炒股 5 + 房产 4）
+      const SRC_K = ["biz", "exec", "fang", "cadre", "pro", "inv", "dual"];
+      const SRC_W = [
+        [22, 6, 12, 14, 10, 2, 34], // 第 3 级上段
+        [28, 12, 14, 14, 12, 3, 17], // 第 4 级下段
+        [40, 22, 14, 12, 8, 4, 0], // 第 4 级上段
+        [45, 28, 10, 7, 6, 4, 0], // 第 5 级
+        [53, 31, 3, 3, 4, 5, 0], // 第 6 级（房产、高知倾斜之后约 53 / 35 / 9）
+        [53, 31, 3, 3, 4, 5, 0], // 第 7 级
+        [75, 10, 5, 1, 1, 8, 0], // 第 8–10 级
+      ];
+      // 来源分组：第 3 级人均 5.2 万以上（约上三分之一）0 · 第 4 级人均 10 万以下 1、以上 2 · 第 5 级 3 · 第 6 级 4 · 第 7 级 5 · 第 8–10 级 6
+      const srcG = (s) => { const t = s.fam0; return t < 2 ? -1 : t === 2 ? (s.famInc >= 52000 ? 0 : -1) : t === 3 ? (s.famInc >= 100000 ? 2 : 1) : Math.min(6, t - 1); };
+      const SRC_N = { biz: "企业主家庭", exec: "高管家庭", fang: "房二代家庭", cadre: "体制内干部家庭", pro: "专业人士家庭", inv: "职业投资家庭", dual: "双职工家庭" };
+      const SRC_SUB = {
+        biz: [["个体户·五金店", "小老板·装修工程队", "小老板·两家餐馆", "个体户·批发档口"], ["家族工厂", "贸易公司", "连锁门店"], ["家族企业", "几家工厂和一栋写字楼"], ["上市公司", "集团公司"], ["家族集团·私人飞机、家族办公室", "跨国家族集团·家族办公室"]],
+        exec: [["国企中层", "大厂中层"], ["外企高管", "大厂高管", "国企高管"], ["跨国公司高管", "大厂合伙人"], ["跨国公司大中华区总裁", "央企高管"], ["科技巨头创始团队·家族办公室"]],
+        fang: [["三套房收租"], ["五套房收租", "城中村自建楼"], ["一栋楼收租", "整条街的铺面"], ["一栋商业楼"], ["几座商业综合体·家族办公室"]],
+        cadre: [["处级干部", "国企中层"], ["处级干部", "国企中层"], ["厅级干部", "国企领导"], ["厅级干部"], ["厅级干部"]],
+        pro: [["医生", "律师", "大学教授"], ["主任医师", "律所合伙人", "教授"], ["名医", "律所高级合伙人", "知名教授"], ["顶级律所创始合伙人"], ["顶级律所创始合伙人"]],
+        inv: [["炒股炒房"], ["炒股炒房"], ["职业投资人"], ["私募基金"], ["百亿私募·家族办公室"]],
+        dual: [["父母都在单位上班"], ["父母都在单位上班"], [""], [""], [""]],
+      };
+      const SRC_FLV = {
+        biz: ["爸妈起早贪黑守着生意，饭桌上聊的都是进货和回款。", "家里的厂子养着几百号人，过年要给员工发红包。", "爸爸的名字常出现在本地新闻里，家里的事和公司的事分不太开。"],
+        exec: ["爸妈常年出差，家里墙上挂着各国城市的冰箱贴。", "爸爸一年飞一百多趟，你的英语启蒙老师是外教。"],
+        fang: ["爸妈不上班，每月初挨家收租，微信转账提示音响一整天。", "老家那片早年划进了城区，家里的几栋楼成了全家的饭碗。"],
+        cadre: ["家里电话不断，逢年过节总有人上门拜访。", "爸爸在单位干了半辈子，最信的两个字是“稳定”。"],
+        pro: ["家里书比家具多，饭桌上聊的是病例、案子和论文。", "爸妈一个在医院一个在大学，周末也在加班看材料。"],
+        inv: ["爸爸每天盯着 K 线，家里的钱跟着大盘起起落落。", "家里的钱一半在股市一半在房子里，有一年赚翻，有一年亏惨。"],
+        dual: ["爸妈都在单位上班，日子安稳，不大富也不发愁。"],
+      };
+      const SRC_TAG = { biz: "富二代", exec: "高管家庭", fang: "房二代", cadre: "干部家庭", pro: "专业人士家庭", inv: "投资客家庭", dual: "双职工家庭" };
+      // 来源对家底的倍数（企业主最厚但最不稳）
+      const SRC_POT = { biz: 1.8, exec: 1, fang: 1, cadre: 0.8, pro: 0.9, inv: 1.1, dual: 0.85 };
+      const srcTag = (s) => (s.src === "biz" && s.srcG <= 1 ? "老板家孩子" : s.src === "fang" && /城中村/.test(s.srcSub) ? "拆迁户" : s.src === "pro" && s.parEdu === 3 ? "高知家庭" : SRC_TAG[s.src]);
+      const srcTxt = (s) => (s.src ? SRC_N[s.src] + (s.srcSub ? `（${s.srcSub}）` : "") : "");
+      function drawSrc(s) {
+        const R = Math.random, g = (s.srcG = srcG(s));
+        s.src = ""; s.srcSub = "";
+        if (g < 0) return;
+        const hot = { 北京: 1, 上海: 1, 广东: 1, 浙江: 1 }[s.p.n];
+        const w = SRC_W[g].map((v, i) => v * (SRC_K[i] === "fang" ? (s.urban ? (hot ? 2.5 : 1) : s.chai ? 1 : 0.15) : SRC_K[i] === "pro" && s.parEdu === 3 ? 3 : 1));
+        s.src = SRC_K[wpick(w)];
+        s.srcSub = rnd(SRC_SUB[s.src][s.fam0 >= 8 ? 4 : Math.min(3, g === 0 ? 0 : g === 1 ? (s.src === "biz" ? 0 : 1) : g <= 3 ? 1 : g <= 5 ? 2 : 3)]) || "";
+        // 农村的第 6 级及以上只有三条路：乡镇企业主、养殖大户、城中村拆迁
+        if (!s.urban && g >= 4) { s.src = R() < 0.7 ? "biz" : "fang"; s.srcSub = s.src === "biz" ? (R() < 0.6 ? "乡镇企业主" : "养殖大户") : "城中村拆迁"; }
+        s.srcFlv = rnd(SRC_FLV[s.src]);
+        if (s.src === "fang" && !s.urban && g < 4) s.srcSub = "城中村自建楼";
+        if (s.src === "pro" && s.parEdu < 2) s.parEdu = 2;
+        s.biz = s.src === "biz";
+        s.rent = s.src === "fang" ? RENT[g] * (0.7 + 0.6 * R()) : 0;
+      }
+      function drawFam(s) {
+        // 先按 P(级 | 省, 城乡) 抽级（和出生卡上显示的同一个函数），再在这一级的收入区间里抽家庭人均收入（城乡内排名 s.grpPct）
+        const R = Math.random, pf = FLV[s.p.n] || {}, c = famCell(s.p, s.urban);
+        const t = wpick(c.fam), u0 = Phi(c.z[t]), u1 = Phi(c.z[t + 1]);
+        const z = invPhi(u0 + (u1 - u0) * R());
+        const inc = Math.min(t < 9 ? LV_CUT[t] - 1 : Infinity, Math.max(t ? LV_CUT[t - 1] : 0, Math.exp(lnQ(LADDER[s.urban ? 1 : 0], z)) * incF(s.p, s.urban)));
+        s.grpPct = Phi(z) * 100; s.famPct = pctOf(inc);
+        s.fam = s.fam0 = t; s.dec = decOf(t); s.top = topOf(t);
+        s.parEdu = wpick(PED[t]);
+        s.famInc = Math.max(t ? Math.ceil(LV_CUT[t - 1] / 100) * 100 : 100, Math.min(t < 9 ? Math.floor((LV_CUT[t] - 1) / 100) * 100 : Infinity, Math.round(inc / 100) * 100)); // 人均，取整后仍在本级内
+        // 家庭资产（万）：第 6 级 600 万–1000 万 · 第 7 级 1000 万–1 亿 · 第 8 级 1–5 亿 · 第 9 级 5–20 亿 · 第 10 级 20 亿以上
+        s.famAsset = [600 + 400 * R(), 1000 * Math.pow(10, R() * R()), 10000 * Math.pow(5, R() * R()), 50000 * Math.pow(4, R()), 200000 * Math.pow(10, R() * R())][t - 5] || 0;
+        s.famPot = t >= 5 ? s.famAsset : ASSET[t] * (0.6 + 0.8 * R());
+        s.biz = R() < BIZ[t] * (pf.biz || 1);
+        drawSrc(s);
+        if (s.src && t <= 4) s.famPot *= SRC_POT[s.src];
+        s.sibs = s.urban || t >= 5 ? (R() < 0.3 ? 1 : 0) : R() < 0.55 ? (R() < 0.3 ? 2 : 1) : 0;
+        // 起步职级：家里的眼界和人脉让第一份工作的起点略高（仍以随机为主）
+        if (s.lvl != null) s.lvl = Math.min(1, 0.75 * s.lvl + [0, 0.075, 0.19, 0.305, 0.345, 0.38, 0.38, 0.38, 0.38, 0.38][t] + (s.src === "exec" ? 0.05 : 0));
+      }
+      // 家庭收入：人均 × 2.8；月收入 = 年 / 12
+      const wan = (v) => (v >= 1e4 ? `${v >= 1e5 ? Math.round(v / 1e4).toLocaleString("en-US") : +(v / 1e4).toFixed(1)} 万` : `${(Math.round(v / 100) * 100).toLocaleString("en-US")} 元`);
+      const hhTxt = (s) => "约 " + wan(s.famInc * HH);
+      const hhMon = (s) => "约 " + wan((s.famInc * HH) / 12);
+      const decTxt = (s) => `家庭月收入${hhMon(s)} · ${rankTxt(s)}`;
+
+      // ===== 地方特色：每省一个标签 + 几个概率倾斜，乘在家庭档位之上（±10–30%）=====
+      // gov 家里盼你考公 · govP 进面 · biz 经商 · boss 创业成功 · out 外出务工 · lb 留守 · gk 高考 · uni 上大学 · iq 学习 · cl 彩礼 · joy 安逸 · cost 生活成本 · house 房价 · wed 婚育节奏
+      const NE = { tag: "体制内情结 · 人口外流", gov: 1.25, out: 1.2, cl: 0.6, ne: 1 }, WEST = { tag: "高考边疆加分 · 西部计划", gk: 0.03, cost: 0.85, west: 1 };
+      const FLV = {
+        山东: { tag: "考公大省 · 孔孟之乡", gov: 1.3, govP: 1.1, iq: 1.03, cl: 1.8 },
+        浙江: { tag: "经商氛围浓 · 彩礼高", biz: 1.3, boss: 0.05, cl: 2.4 },
+        江苏: { tag: "教育强省 · 民营制造", gk: -0.03, iq: 1.05, biz: 1.1 },
+        广东: { tag: "做生意 · 务实 · 打工目的地", biz: 1.25, boss: 0.04, dest: 1 },
+        福建: { tag: "侨乡 · 民营大省 · 彩礼高", biz: 1.25, boss: 0.04, cl: 2.4 },
+        河南: { tag: "劳务输出 · 高考竞争激烈", out: 1.3, lb: 1.25, gk: -0.04, cl: 2 },
+        安徽: { tag: "劳务输出大省", out: 1.3, lb: 1.2, cl: 2 },
+        江西: { tag: "劳务输出 · 彩礼全国最高", out: 1.25, lb: 1.2, cl: 3 },
+        四川: { tag: "安逸 · 外出打工", out: 1.3, lb: 1.2, joy: 3 },
+        重庆: { tag: "火锅麻将 · 安逸", out: 1.15, lb: 1.1, joy: 3 },
+        湖南: { tag: "劳务输出大省", out: 1.2, lb: 1.15 },
+        贵州: { tag: "劳务输出大省", out: 1.25, lb: 1.25, cl: 2 },
+        广西: { tag: "劳务输出大省", out: 1.2, lb: 1.15 },
+        辽宁: NE, 吉林: NE, 黑龙江: NE,
+        北京: { tag: "高考友好 · 房价天花板", gk: 0.04, house: 3, wed: 0.8, dest: 1 },
+        上海: { tag: "高考友好 · 房价天花板 · 彩礼低", gk: 0.04, house: 3, wed: 0.8, cl: 0.5, dest: 1 },
+        天津: { tag: "安逸 · 相声之乡", joy: 2 },
+        河北: { tag: "环京通勤" },
+        山西: { tag: "煤炭大省", coal: 1, cl: 2 },
+        内蒙古: { tag: "能源大省", coal: 1 },
+        陕西: { tag: "高校多 · 能源大省", uni: 0.02, coal: 1 },
+        湖北: { tag: "高校云集", uni: 0.03 },
+        海南: { tag: "慢生活", joy: 2 },
+        云南: { tag: "旅游大省", joy: 1 },
+        西藏: WEST, 新疆: WEST, 青海: WEST, 宁夏: { ...WEST, cl: 2 }, 甘肃: { ...WEST, cl: 2 },
+      };
+      const pf = (k, d = 1) => (S && S.pf && S.pf[k] != null ? S.pf[k] : d);
+      const assetTxt = (v) => (v >= 10000 ? `约 ${+(v / 10000).toFixed(1)} 亿` : v >= 1000 ? `约 ${+(v / 1000).toFixed(1)} 千万` : `约 ${Math.round(v / 10) * 10} 万`);
+      const $ = (id) => document.getElementById(id);
+      const rnd = (a) => a[Math.floor(Math.random() * a.length)];
+      const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
+      const SUR = "王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾萧田董袁潘蒋蔡余杜叶程魏苏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤";
+      const MALE = "伟强磊军洋勇杰涛明超辉刚健鹏浩宇俊峰斌博文轩晨阳睿泽";
+      const FEM = "芳娜敏静丽艳娟霞秀玲婷雪慧琳晶欣怡萱悦佳雨梓涵彤瑶琪";
+
+      // 节奏：1× = 每年 1.6 秒
+      const YEAR_MS = 1600, SKIP_MS = 45;
+      let S, timer = null, mult = 1, paused = false, blocked = false, skipping = false, resume = null;
+      const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // 每行的类型（warm/bad/big/choice）和心境标签
+      const TAG = {
+        "学会了走路。": { t: "warm" }, "第一次叫了“妈妈”。": { t: "warm" }, "在院子里追着鸡跑。": { t: "warm" }, "发了一场高烧，家人一夜没睡。": { t: "bad" },
+        "期末考试拿了奖状。": { t: "warm" }, "被老师叫了家长。": { t: "bad" }, "暑假去了外婆家。": { t: "warm" }, "交到了最好的朋友。": { t: "warm" },
+        "第一次喜欢上一个人。": { t: "warm", m: "love" }, "和父母大吵一架。": { t: "bad" },
+        "加班到深夜。": { t: "bad" }, "攒钱买了辆车。": { t: "warm" }, "和朋友去旅行。": { t: "warm" }, "体检查出小毛病。": { t: "bad" }, "升职加薪了。": { t: "warm" }, "房贷压得喘不过气。": { t: "bad", m: "debt" },
+        "父母身体变差，常跑医院。": { t: "bad", m: "ill" }, "和老同学聚会。": { t: "warm" },
+        "退休了，每天去公园。": { t: "warm" }, "带孙辈。": { t: "warm" }, "跳广场舞。": { t: "warm" }, "老朋友一个个离开。": { t: "bad", m: "death" }, "腿脚不如从前了。": { t: "bad" }, "学会了用手机视频通话。": { t: "warm" },
+      };
+      const REFLECT = { 15: "你现在最想离开这里，还是留下来？", 30: "如果重来，你会换一座城市吗？", 50: "这些年，你最对不起谁？", 70: "你想被怎样记住？" };
+
+      // 心境：--bg / --paper / --ink / --accent 约 2 秒缓动
+      const MOODS = {
+        温馨: { bg: "#f6ecd9", paper: "#fcf5e8", ink: "#4a3626", accent: "#e0915a", vig: 0 },
+        浪漫: { bg: "#f6e4e1", paper: "#fdf2f0", ink: "#4b2c33", accent: "#c8677b", vig: 0 },
+        平淡: { bg: "#ebe4d4", paper: "#f6f1e6", ink: "#3b3a2f", accent: "#86a073", vig: 0 },
+        沮丧: { bg: "#d8dde2", paper: "#e7eaed", ink: "#2e3946", accent: "#6d8197", vig: 0.18 },
+        悲伤: { bg: "#cdd4da", paper: "#dfe4e8", ink: "#29323b", accent: "#7f8c99", vig: 0.65 },
+      };
+      const KEYS = ["bg", "paper", "ink", "accent"];
+      const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+      let moodNow = null, moodCur = null, moodRaf = 0;
+      function paint(c) {
+        const r = document.documentElement.style;
+        KEYS.forEach((k) => r.setProperty("--" + k, `rgb(${c[k].map(Math.round).join(" ")})`));
+        r.setProperty("--vig", c.vig.toFixed(3));
+      }
+      function setMood(mood, age, dur = 2000) {
+        const root = document.documentElement;
+        const end = S ? Math.max(70, S.le) : 80;
+        const sat = age >= 60 ? 1 - 0.6 * Math.min(1, (age - 60) / Math.max(10, end - 60)) : 1;
+        root.style.setProperty("--sat", sat.toFixed(3));
+        root.dataset.mood = mood; $("l-mood").textContent = mood;
+        if (mood === moodNow) return;
+        moodNow = mood;
+        const m = MOODS[mood], to = { vig: m.vig }; KEYS.forEach((k) => (to[k] = hex(m[k])));
+        if (!moodCur || REDUCED || dur === 0) { moodCur = to; cancelAnimationFrame(moodRaf); return paint(to); }
+        const from = JSON.parse(JSON.stringify(moodCur)), t0 = performance.now();
+        cancelAnimationFrame(moodRaf);
+        (function step(now) {
+          const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3), c = { vig: from.vig + (to.vig - from.vig) * e };
+          KEYS.forEach((k) => (c[k] = from[k].map((v, i) => v + (to[k][i] - v) * e)));
+          moodCur = c; paint(c);
+          if (p < 1) moodRaf = requestAnimationFrame(step);
+        })(t0);
+      }
+      function moodOf() {
+        const a = S.age, j = S.joy, t = S.tags;
+        if (t.has("death") || t.has("ill") || S.hp < 30) return "悲伤";
+        // 亲人离世的第二年仍然低落，除非这一年陪着家人朋友
+        // 丧亲之痛 G：>10 悲伤，5–10 至少沮丧
+        if ((S.G || 0) > 10) return "悲伤";
+        if (j < 35 || t.has("layoff") || t.has("debt") || t.has("divorce") || t.has("sad") || (S.G || 0) > 5) return "沮丧";
+        if (a >= 18 && a <= 35 && (t.has("love") || t.has("marriage") || j > 75)) return "浪漫";
+        if (a <= 15 || j > 65) return "温馨";
+        return "平淡";
+      }
+      function evalMood() {
+        if (S.hp < 30) S.tags.add("ill");
+        setMood(moodOf(), S.age);
+      }
+
+      function show(id) {
+        document.querySelectorAll(".x-screen").forEach((s) => (s.hidden = s.id !== id));
+        document.documentElement.classList.toggle("is-life", id === "s-life");
+        document.documentElement.classList.toggle("is-draw", id === "s-draw");
+        if (id !== "s-life") hist(false);
+        window.scrollTo(0, 0);
+      }
+      function toast(msg) {
+        const t = $("toast"); t.textContent = msg; t.hidden = false;
+        clearTimeout(toast.h); toast.h = setTimeout(() => (t.hidden = true), 2400);
+      }
+      // 只按 2024 年各省出生人数加权
+      function weighted(list = PROV) {
+        let r = Math.random() * list.reduce((s, p) => s + p.b, 0);
+        for (const p of list) { if ((r -= p.b) <= 0) return p; }
+        return list[list.length - 1];
+      }
+      const share = (p) => p.b / CN.births;
+      const SLO = Math.sqrt(Math.min(...PROV.map(share))), SHI = Math.sqrt(Math.max(...PROV.map(share)));
+
+      // 地图：国家标准地图数据（含台湾、香港、澳门与南海断续线 JD），完整绘制，不裁切
+      const MAP = (() => { try { return JSON.parse($("cnmap").textContent); } catch (e) { return { p: [] }; } })();
+      // 面积太小的地方，标签挪开一点，用细线连回去：[横向 × 标签宽, 纵向 × 标签高]
+      const OFF = { 北京: [-0.85, -1.05], 天津: [1.2, -0.25], 上海: [1.25, 0.2], 香港: [0.8, 1.05], 澳门: [-0.9, 1.1] };
+      const C_LO = [252, 236, 214], C_HI = [196, 98, 42]; // 浅杏 → 深杏
+      const tint = (t) => `rgb(${C_LO.map((v, i) => Math.round(v + (C_HI[i] - v) * t)).join(" ")})`;
+      const LAB = [], PATH = [], LABI = [], TWIN = [];
+      const MW = MAP.w || 1000, MH = MAP.h || 689;
+      const INS = MAP.inset || null; // 南海诸岛附图：右下角方框
+      const INS_K = 0.75; // 附图缩放，锚定右下角
+      const LAB_K = 0.72; // 省名与百分比字号系数
+      const labPct = (v) => (v * 100 < 0.1 ? (v * 100).toFixed(2) : (v * 100).toFixed(1)) + "%"; // 澳门约 0.04%
+      function buildMap() {
+        const svg = $("map"); if (svg.dataset.ok) return; svg.dataset.ok = "1";
+        let gp = "", jd = "", ins = "";
+        if (INS) {
+          let ip = "", ij = "";
+          (INS.p || []).forEach((f) => {
+            if (f.n === "JD") { ij += `<path class="x-jd" d="${f.d}"/>`; return; }
+            const i = PROV.findIndex((p) => p.n === f.n);
+            if (i < 0) { ip += `<path class="x-p x-p--x" d="${f.d}"/>`; return; }
+            const t = (Math.sqrt(share(PROV[i])) - SLO) / (SHI - SLO);
+            ip += `<path class="x-p" data-j="${i}" d="${f.d}" style="fill:${tint(t)}"/>`;
+          });
+          const { x, y, w, h } = INS;
+          // 整组绕右下角缩到 INS_K；图名放在方框上沿外侧，避开框内的断续线
+          const X1 = x + w, Y1 = y + h;
+          ins = `<g id="m-ins" transform="translate(${X1} ${Y1}) scale(${INS_K}) translate(${-X1} ${-Y1})">`
+            + `<clipPath id="m-clip"><rect x="${x}" y="${y}" width="${w}" height="${h}"/></clipPath>`
+            + `<rect class="x-inset" x="${x}" y="${y}" width="${w}" height="${h}"/>`
+            + `<g clip-path="url(#m-clip)">${ip}${ij}</g>`
+            + `<text class="x-inset__t" id="m-ins-t" x="${X1}" y="${y - 6}" font-size="14">${INS.title || "南海诸岛"}</text></g>`;
+        }
+        MAP.p.forEach((f) => {
+          if (f.n === "JD") { jd += `<path class="x-jd" d="${f.d}"/>`; return; }
+          const i = PROV.findIndex((p) => p.n === f.n);
+          if (i < 0) { gp += `<path class="x-p x-p--x" d="${f.d}"/>`; LAB.push({ n: f.n, ax: f.x, ay: f.y, grey: true }); return; }
+          const v = share(PROV[i]), t = (Math.sqrt(v) - SLO) / (SHI - SLO);
+          gp += `<path class="x-p" data-i="${i}" d="${f.d}" style="fill:${tint(t)}"/>`;
+          LAB.push({ n: f.n, i, v, t, ax: f.x, ay: f.y });
+        });
+        const labs = LAB.map((l) => `<g class="x-lab${l.grey ? " x-lab--x" : ""}"><text class="x-lab__n">${l.n}</text>${l.grey ? "" : `<text class="x-lab__p">${labPct(l.v)}</text>`}</g>`).join("");
+        // 层次：海色底 → 省份 → 高亮描边 → 南海诸岛附图 → 引线 → 标签 → 断续国界线（始终在最上，保证可见）
+        svg.innerHTML = `<rect class="x-sea" x="0" y="0" width="${MW}" height="${MH}"/><g>${gp}</g><path class="x-hl" id="m-hl"/><path class="x-hl x-hl--pulse" id="m-pulse"/>${ins}<g class="x-lead" id="m-lead"></g><g id="m-lab">${labs}</g>${jd}`;
+        const els = [...$("m-lab").children];
+        LAB.forEach((l, k) => { l.el = els[k]; if (!l.grey) LABI[l.i] = l.el; });
+        svg.querySelectorAll(".x-p[data-i]").forEach((el) => (PATH[+el.dataset.i] = el));
+        svg.querySelectorAll(".x-p[data-j]").forEach((el) => (TWIN[+el.dataset.j] = el));
+        const lo = Math.min(...PROV.map(share)), hi = Math.max(...PROV.map(share));
+        $("m-key").innerHTML = `<span>新生儿占比</span><span>${labPct(lo)}</span><i></i><span>${labPct(hi)}</span>`;
+        const top = [...PROV].sort((a, b) => b.b - a.b)[0];
+        svg.setAttribute("aria-label", `中国地图：${PROV.length} 个省级行政区按 2024 年出生人口占比着色，${top.n}最高，约 ${(share(top) * 100).toFixed(1)}%`);
+        if (window.ResizeObserver) new ResizeObserver(() => layout()).observe($("mapbox") || svg);
+      }
+      // 标签：字号按概率开平方，屏幕上 11–26px，换算成 viewBox 单位；互相推开，挪远了就画引线
+      function layout() {
+        const svg = $("map"), r = svg.getBoundingClientRect();
+        if (!r.width || !r.height || !LAB.length) return;
+        const u = 1 / Math.min(r.width / MW, r.height / MH), pad = 2 * u;
+        // 附图图名：屏幕上 10px，写在缩放组里要除回 INS_K
+        const capF = 10 * u, it_ = $("m-ins-t");
+        if (it_) { it_.setAttribute("font-size", (capF / INS_K).toFixed(1)); it_.setAttribute("y", (INS.y - 3 * u / INS_K).toFixed(1)); it_.style.strokeWidth = 2.5 * u / INS_K; }
+        // 缩放后附图的左上角（图名高度也算进去），标签不进这块
+        const IX = INS ? INS.x + INS.w * (1 - INS_K) : 0, IY = INS ? INS.y + INS.h * (1 - INS_K) - capF * 1.3 : 0;
+        const span = 1000 / u < 520 ? 9 : 15; // 手机上最大约 14px，宽屏 19px，免得东部挤成一团
+        const B = LAB.map((l) => {
+          const f = (l.grey ? 11 : 11 + span * l.t) * LAB_K * u, pf = Math.max(11 * LAB_K * u, f * 0.6);
+          const pc = l.grey ? "" : labPct(l.v);
+          const h = l.grey ? f * 1.15 : f * 0.98 + pf * 1.02, w = Math.max(l.n.length * f, pc.length * 0.6 * pf) + 2 * u;
+          const [n, p] = l.el.children;
+          n.setAttribute("font-size", f.toFixed(1)); n.setAttribute("y", (-h / 2 + f * 0.92).toFixed(1)); n.style.strokeWidth = 2.4 * u;
+          if (p) { p.setAttribute("font-size", pf.toFixed(1)); p.setAttribute("y", (h / 2 - pf * 0.22).toFixed(1)); p.style.strokeWidth = 2.4 * u; }
+          const o = OFF[l.n], tx = l.ax + (o ? o[0] * w : 0), ty = l.ay + (o ? o[1] * h : 0);
+          return { l, w, h, tx, ty, x: tx, y: ty, off: !!o };
+        });
+        const fit = (b) => {
+          b.x = Math.max(b.w / 2, Math.min(MW - b.w / 2, b.x)); b.y = Math.max(b.h / 2, Math.min(MH - b.h / 2, b.y));
+          if (!INS) return; // 标签不进南海诸岛附图：从左边或上边推出去
+          const ox = b.x + b.w / 2 + pad - IX, oy = b.y + b.h / 2 + pad - IY;
+          if (ox > 0 && oy > 0) { if (ox < oy) b.x -= ox; else b.y -= oy; }
+        };
+        for (let it = 0; it < 280; it++) {
+          for (let a = 0; a < B.length; a++) for (let c = a + 1; c < B.length; c++) {
+            const A = B[a], C = B[c];
+            const ox = (A.w + C.w) / 2 + pad - Math.abs(A.x - C.x), oy = (A.h + C.h) / 2 + pad - Math.abs(A.y - C.y);
+            if (ox <= 0 || oy <= 0) continue;
+            const wa = C.w * C.h / (A.w * A.h + C.w * C.h); // 大标签挪得少
+            if (ox < oy) { const s = A.x < C.x ? -ox : ox; A.x += s * wa; C.x -= s * (1 - wa); }
+            else { const s = A.y < C.y ? -oy : oy; A.y += s * wa; C.y -= s * (1 - wa); }
+          }
+          const k = it < 220 ? 0.05 : 0;
+          B.forEach((b) => { b.x += (b.tx - b.x) * k; b.y += (b.ty - b.y) * k; fit(b); });
+        }
+        svg.classList.add("is-lay");
+        let lead = "";
+        B.forEach((b) => {
+          b.l.el.style.setProperty("--x", b.x.toFixed(1) + "px"); b.l.el.style.setProperty("--y", b.y.toFixed(1) + "px");
+          const px = Math.max(b.x - b.w / 2, Math.min(b.x + b.w / 2, b.l.ax)), py = Math.max(b.y - b.h / 2, Math.min(b.y + b.h / 2, b.l.ay));
+          const far = Math.hypot(b.x - b.l.ax, b.y - b.l.ay) > b.h * 0.6;
+          if ((b.off || far) && (px !== b.l.ax || py !== b.l.ay))
+            lead += `<line x1="${b.l.ax}" y1="${b.l.ay}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}"/><circle cx="${b.l.ax}" cy="${b.l.ay}" r="${(1.6 * u).toFixed(1)}"/>`;
+        });
+        $("m-lead").innerHTML = lead;
+        svg.getBoundingClientRect();
+        requestAnimationFrame(() => svg.classList.remove("is-lay"));
+      }
+      // 地图高亮：省份填色、标签放大、描边；落点时描边脉冲
+      function mapFx(el, state) {
+        const lab = LABI[+el.dataset.i];
+        lab.classList.toggle("is-on", state === "on"); lab.classList.toggle("is-hit", state === "hit");
+        el.classList.toggle("is-hit", state === "hit");
+        const tw = TWIN[+el.dataset.i]; // 南海诸岛附图里的同一省份跟着亮
+        if (tw) { tw.classList.toggle("is-on", state === "on"); tw.classList.toggle("is-hit", state === "hit"); }
+        const hl = $("m-hl"), pu = $("m-pulse");
+        if (!state) return hl.removeAttribute("d");
+        hl.setAttribute("d", el.getAttribute("d"));
+        if (state === "hit") {
+          lab.parentNode.appendChild(lab);
+          pu.setAttribute("d", el.getAttribute("d")); pu.classList.remove("is-go"); pu.getBoundingClientRect(); pu.classList.add("is-go");
+        }
+      }
+      function resetMap() {
+        PATH.forEach((el) => el && el.classList.remove("is-on", "is-hit"));
+        TWIN.forEach((el) => el && el.classList.remove("is-on", "is-hit"));
+        LABI.forEach((el) => el && el.classList.remove("is-on", "is-hit"));
+        if ($("m-hl")) { $("m-hl").removeAttribute("d"); $("m-pulse").removeAttribute("d"); $("m-pulse").classList.remove("is-go"); }
+      }
+      // 高亮按概率跳，越跳越慢，最后落到抽中的那一个；curve(x) 给出进度 x∈[0,1] 时每一跳的毫秒数
+      const EASE_MAP = (x) => 45 + 650 * Math.pow(x, 2.2); // 共约 6 秒：先快，渐慢，最后 1.5 秒只跳三下
+      function hop(els, pickNext, target, total, done, fx = () => {}, hold = 650, curve = (x) => 45 + 380 * x * x) {
+        let cur = null, t = 0;
+        const step = (last) => {
+          if (cur) { cur.classList.remove("is-on"); fx(cur, null); }
+          cur = last ? target : pickNext(cur);
+          cur.classList.add(last ? "is-hit" : "is-on"); fx(cur, last ? "hit" : "on");
+          if (last) return (drawT = setTimeout(done, hold));
+          const d = curve(Math.min(1, t / total));
+          t += d; drawT = setTimeout(() => step(t >= total), d);
+        };
+        if (REDUCED) { target.classList.add("is-hit"); fx(target, "hit"); return (drawT = setTimeout(done, 700)); }
+        step(false);
+      }
+      let drawT = 0;
+      // Gompertz: h(x) = a·e^(b·x)，二分求 a 使期望寿命 ≈ 目标
+      const GB = 0.085;
+      function lifeExp(a) { let s = 1, e = 0; for (let x = 0; x < 130; x++) { const q = Math.min(1, a * Math.exp(GB * x)); e += s * (1 - q / 2); s *= 1 - q; } return e; }
+      function solveA(le) { let lo = 1e-7, hi = 1e-2; for (let i = 0; i < 50; i++) { const m = Math.sqrt(lo * hi); lifeExp(m) > le ? (lo = m) : (hi = m); } return Math.sqrt(lo * hi); }
+      // 活到 age 岁的比例（同一 Gompertz 模型，按省预期寿命）
+      function survive(a, age) { let s = 1; for (let x = 0; x < age; x++) s *= 1 - Math.min(1, a * Math.exp(GB * x)); return s; }
+      const MILE = [5, 18, 30, 50, 65, 70, 80, 90];
+      function milestone(age) {
+        if (!MILE.includes(age)) return;
+        const pa = S.pA || (S.pA = solveA(S.p.le)), v = survive(pa, age) * 100;
+        const t = v >= 99.5 ? "超过 99%" : v < 1 ? "不到 1%" : Math.round(v) + "%";
+        log(`和你同年出生在${S.p.n}的人，约 ${t} 还活着。`, "plain");
+      }
+      function odds(p, urban, male) {
+        const X = share(p), c = birthCells(p).find((q) => !!q[0] === urban && !!q[1] === male), W = X * (c ? c[2] : 0), M = 14;
+        const bar = (lbl, v, me) => `<div class="x-cmp__row${me ? " is-me" : ""}"><span>${lbl}</span><i><b style="width:${(v / M) * 100}%"></b></i><span>${v.toFixed(2)}‰</span></div>`;
+        const who = (SAR(p) ? "" : urban ? "城镇" : "农村") + (male ? "男孩" : "女孩");
+        const ur = (SAR(p) ? `${p.n}全部是城镇人口；出生性别比约 ${srb(p)}。`
+          : `城镇化率 ${p.u}%；农村生得多些，城镇新生儿约占 ${Math.round(uOf(p) * 100)}%。出生性别比约 ${Math.round(srb(p) * 10) / 10}。`)
+          + `生在${p.n}的${who}：每 10,000 个中国新生儿里${per1w(W)}。`;
+        return `<h4>你出生在这里的机会</h4>
+          <p>每 10,000 个中国新生儿里，${per1w(X)}出生在${p.n}。</p>
+          <p>${p.n}出生率 <b>${p.br.toFixed(2)}‰</b>，全国 ${CN.br.toFixed(2)}‰ · 第 ${p.rank} / ${PROV.length}</p>
+          <div class="x-cmp" role="img" aria-label="${p.n}出生率 ${p.br}‰，全国 ${CN.br}‰">${bar(p.n, p.br, 1)}${bar("全国", CN.br)}</div>
+          <p>${ur}</p>${FLV[p.n] ? `
+          <p>地方特色：<b>${FLV[p.n].tag}</b></p>` : ""}
+          <p class="x-odds__src">数据：国家统计局、国家卫健委 2025（测算）</p>`;
+        // 来源：各省 2024 年统计公报、《中国统计年鉴 2025》，台湾、香港、澳门见 SRC；全国含台湾、香港、澳门共 CN.births 万新生儿
+      }
+
+      document.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => show(b.dataset.go)));
+      $("world").onclick = () => toast("地球 online（国际版）正在全力开发中，先来体验国服公测版吧");
+      $("world").onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") $("world").click(); };
+      function drawScreen() {
+        clearTimeout(drawT); clearInterval(hintT);
+        buildMap(); resetMap();
+        $("d-res").innerHTML = ""; $("d-title").textContent = "你会出生在哪里？"; $("b-draw").disabled = false; $("b-draw").classList.remove("is-busy", "is-pop");
+        show("s-draw"); layout();
+      }
+      $("b-born").onclick = drawScreen;
+      $("b-draw").onclick = birth;
+      $("b-share").onclick = () => {
+        const t = (S && S.shareTxt) || "地球 online（国服公测版）：投一次胎，过完一次中国人生。", url = location.href.split("#")[0];
+        if (navigator.share) navigator.share({ title: "地球 online（国服公测版）", text: t, url }).catch(() => {});
+        else if (navigator.clipboard) navigator.clipboard.writeText(t + " " + url).then(() => toast("已复制，去粘贴分享吧"), () => toast(t));
+        else toast(t);
+      };
+      $("b-again").onclick = () => { document.documentElement.classList.remove("is-ended"); S = null; setMood("温馨", 0); show("s-home"); };
+
+      // 抽签提示：滚动时在格子下面轮换几行小字；返回的函数在落点时把它换成结果
+      let hintT = 0;
+      function rollHint(res, lines) {
+        clearInterval(hintT);
+        const h = document.createElement("span");
+        h.className = "x-ur__hint"; h.textContent = lines[0]; h.setAttribute("aria-hidden", "true"); res.appendChild(h);
+        let i = 0;
+        if (lines.length > 1 && !REDUCED) hintT = setInterval(() => (h.textContent = lines[++i % lines.length]), 800);
+        return (txt) => { clearInterval(hintT); h.textContent = txt; h.classList.add("is-done"); h.removeAttribute("aria-hidden"); };
+      }
+      function birth() {
+        const bd = $("b-draw");
+        bd.disabled = true; bd.classList.remove("is-pop"); bd.classList.add("is-busy"); $("bcard").hidden = true;
+        // 落点：停止转圈，按钮轻轻一弹
+        let endP = () => {};
+        const land = (el, s) => { mapFx(el, s); if (s === "hit") { endP(`落定：${S.p.n}`); bd.classList.remove("is-busy"); bd.getBoundingClientRect(); bd.classList.add("is-pop"); } };
+        // 省份按出生人数抽；性别和城乡一起抽（四格，唯一一次性别抽签）
+        const p = weighted(), { urban, male } = drawBirth(p);
+        const name = rnd(SUR) + rnd(male ? MALE : FEM) + (Math.random() < 0.6 ? rnd(male ? MALE : FEM) : "");
+        const le = +(p.le + (urban ? 2 : -2)).toFixed(1);
+        S = { p, urban, male, name, le, a: solveA(le), age: 0, hp: 85, joy: 70, jb: 45 + Math.random() * 25, iq: 30, money: 0, inc: 0, track: "", edu: 1, job: 1, retake: false,
+          sit: "work", loc: urban ? "prov" : "rural", lvl: Math.random(), cut: 1, kids: [], house: null, inv: "", peak: 0, low: 0, dy: null,
+          chai: urban ? Math.random() < 0.12 : p.t <= 2 && Math.random() < 0.4, rel: 60, pick: "均衡", focus: "", fx: {}, wed: 0, date: 0, school: "", uni: "", tierK: 0, ky: 0, ez: 0 };
+        // 家庭背景：在省份、城乡之后抽（famDist）；学区房只在城镇，看家里的钱
+        drawFam(S);
+        S.pf = FLV[p.n] || {}; S.jb += S.pf.joy || 0;
+        S.xq = urban && Math.random() < [0.01, 0.073, 0.26, 0.495, 0.571, 0.62, 0.66, 0.7, 0.7, 0.7][S.fam];
+        // 天资：正态 1.0±0.1，截在 0.75–1.25；城镇、学区房各 +0.03；父母学历 高知 +0.04 · 大专本科 +0.02 · 初中及以下 −0.02
+        const nz = Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+        S.apt = Math.max(0.75, Math.min(1.25, 1 + 0.1 * nz)) + (urban ? 0.03 : 0) + [-0.02, 0, 0.02, 0.04][S.parEdu] + (S.xq ? 0.03 : 0) + (S.src === "pro" ? 0.03 : 0);
+        S.Kb = S.Ka = S.KbPeak = S.iq;
+        // 个人运气与本事：一辈子跟着你的收入乘数（对数正态，和家境无关），让寒门也有翻身的机会
+        const nl = Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+        S.luck = Math.exp(1.1 * Math.max(-2.5, Math.min(2.5, nl)));
+        // 人情三圈：家人、朋友、同事社会（第一份工作前为 0）
+        S.Rf = 50 + 15 * Math.random(); S.Rp = 40 + 15 * Math.random(); S.Rw = 0; S.G = 0; relSync();
+        // 天生合群程度：正态 0.5±1，截在 −2–3；每年把家人、朋友圈往上或往下推一点
+        const ns = Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+        S.soc = Math.max(-2, Math.min(3, 0.5 + ns));
+        STORY.init(S); S.soft = $("soft").checked;
+        const r4 = () => Math.floor(Math.random() * 4);
+        S.g = { face: r4(), skin: r4(), hair: r4(), mark: Math.random() < 0.45 ? (Math.random() < 0.5 ? 1 : 2) : 0 }; // mark: 1 痣, 2 酒窝
+        // 第一步：省份。高亮按真实权重跳，落点就是已抽中的 p
+        const pathOf = (q) => PATH[PROV.indexOf(q)];
+        resetMap();
+        $("d-res").innerHTML = "";
+        endP = rollHint($("d-res"), ["正在随机出生地…", "按 2024 年各省出生人数掷骰子…"]);
+        hop(PATH, (cur) => { let q; do q = pathOf(weighted()); while (q === cur); return q; }, pathOf(p), 6000, () => {
+          // 第二步：性别 × 城乡，四格按真实比例跳（港澳没有城乡之分，只分男孩女孩）
+          const res = $("d-res"), cs = birthCells(p);
+          $("d-title").textContent = "男孩还是女孩？城镇还是农村？";
+          res.innerHTML = `<span class="x-ur__cap">每 10,000 个${p.n}新生儿里约</span>` + cs.map(([cu, cm, w]) => `<span class="x-ur">${SAR(p) ? "" : cu ? "城镇" : "农村"}${cm ? "男孩" : "女孩"} ${per1wN(w)}</span>`).join("");
+          const u = [...res.querySelectorAll(".x-ur")], me = u[cs.findIndex((c) => !!c[0] === urban && !!c[1] === male)];
+          const who = (SAR(p) ? "" : urban ? "城镇" : "农村") + (male ? "男孩" : "女孩");
+          const endC = rollHint(res, [SAR(p) ? "正在随机性别…" : "正在随机性别和城乡…"]);
+          hop(u, (cur) => { let e; do e = u[wpick(cs.map((c) => c[2]))]; while (e === cur && u.length > 1); return e; }, me, 1600, famStep,
+            (e, s) => { if (s === "hit") endC(`落定：${who}`); });
+        }, land, 1900, EASE_MAP);
+      }
+      // 第三步：家庭。十格：第 1–10 级，按这个省 + 城乡的条件概率 P(级 | 省, 城乡) 跳，约 2.5 秒；落定的格子写上名称
+      function famStep() {
+        const res = $("d-res"), t = S.fam, w = famDist(S.p, S.urban);
+        $("d-title").textContent = "你会出生在第几级的家庭？";
+        // 每格下面写全国占比，取自 FAM_NAT（各省按出生人数、城乡加权后的全国分布）
+        const pct = (v) => { const x = v * 100; return (x >= 10 ? x.toFixed(1) : x >= 1 ? Math.round(x) : +x.toPrecision(1)) + "%"; };
+        res.innerHTML = `<span class="x-fstrip">${w.map((_, i) => `<span class="x-ur" aria-label="第 ${i + 1} 级 · ${FAM_L[i]} · 全国家庭占比 ${pct(FAM_NAT[i])}"><span class="x-ur__n">${i + 1}</span><small class="x-ur__p" aria-hidden="true">${pct(FAM_NAT[i])}</small></span>`).join("")}</span><span class="x-ur__cap">全国家庭占比</span>`;
+        const el = [...res.querySelectorAll(".x-ur")];
+        const endF = rollHint(res, ["正在随机你的家庭背景…", "正在掷骰子：爸妈是做什么的？", "正在随机：家里一个月能挣多少？"]);
+        // 动画只是走马灯：先 1→10、10→1 快扫两遍（6–10 级每格都亮过），再在十格里随机跳、渐慢；落点仍是 drawFam 抽中的 t
+        const sweep = [...el, ...el.slice(0, 9).reverse()];
+        const pick = (cur) => { if (sweep.length) return sweep.shift(); let e; do e = el[Math.floor(Math.random() * 10)]; while (e === cur); return e; };
+        hop(el, pick, el[t], 3000, () => { show("s-fam"); famReveal(); },
+          (e, s) => { if (s === "hit") endF(`落定：第 ${t + 1} 级 · ${FAM_L[t]}`); }, 650,
+          (x) => (x < 0.28 ? 42 : 42 + 480 * Math.pow((x - 0.28) / 0.72, 2)));
+      }
+      function famReveal() {
+        const t = S.fam, F = FAM[t];
+        const yuan = (v) => (v < 1e4 ? v.toLocaleString("en-US") + " 元" : +(v / 1e4).toFixed(v < 1e5 ? 2 : 1) + " 万");
+        $("f-label").textContent = `第 ${t + 1} 级 · ${famShow(S)}`;
+        // 十级台阶：名称竖排，标出你家
+        const steps = FAM.map((f, i) => `<li${i === t ? ' class="is-me" aria-current="true"' : ""}><i style="--h:${i}"></i><span>${f.s}</span></li>`).join("");
+        // 在本省城/乡家庭里的排名（抽签时的城乡内百分位）
+        const g = S.grpPct, grp = `${S.p.n}${SAR(S.p) ? "" : S.urban ? "城镇" : "农村"}家庭`;
+        const gr = g >= 50 ? `前 <b>${Math.max(1, Math.ceil(100 - g))}%</b>` : `后 <b>${Math.max(1, Math.ceil(g))}%</b>`;
+        $("f-lad").innerHTML = `<ol class="x-lad__bars x-lad__bars--named" aria-label="家庭十级，你家在第 ${t + 1} 级">${steps}</ol>
+          <p class="x-lad__me"><b>${F.m}</b>${F.d ? " · " + F.d : ""}<br />在${grp}里排${gr}</p>`;
+        const rows = [["父母学历", PED_L[S.parEdu] + (S.parEdu === 3 ? "（至少一方硕博或高校、医院骨干）" : "")],
+          ["家庭收入", `月${hhMon(S)} · 人均年约 ${yuan(S.famInc)}`],
+          S.src && ["家底", srcTxt(S)],
+          t >= 5 && ["家庭资产", assetTxt(S.famAsset)], ["兄弟姐妹", S.sibs ? S.sibs + " 个" : "独生"]].filter(Boolean);
+        $("f-facts").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+        // 这一级有多常见：全国份额（目标份额）vs 这个省 + 城乡的条件概率 P(级 | 省, 城乡)——抽签用的就是它
+        const lo = famDist(S.p, S.urban)[t];
+        const help = t === 0 ? "家里能帮你的不多：上学、买房、结婚，多半要靠自己。" : t === 1 ? "家里能帮一点，大事还得自己扛。" : t === 2 ? "家里能在关键时刻托你一把。" : t === 3 ? "补习、首付、找工作，家里都帮得上。" : t <= 6 ? "学区、首付、创业本钱、退路，家里都有。" : "家族集团、家族办公室、私人飞机，你的人生从起跑线之外开始。";
+        $("f-odds").innerHTML = `<div class="x-odds__two"><p>全国：每 10,000 个家庭${per1w(F.sh)}</p><p>在${place(S)}：每 10,000 个新生儿${per1w(lo)}</p></div>
+          <p>${S.src ? S.srcFlv : ""}${help}</p>
+          <p class="x-odds__src">数据：国家统计局 2024、CHFS、胡润（测算）</p>`;
+        // 方法：中间各级按国家统计局 2024 年居民收入（中位数 34,707 元/人）折算；顶部按 CHFS、胡润财富报告估算；家庭 = 人均 × 2.8
+        $("b-fam").focus();
+      }
+      $("b-fam").onclick = () => { show("s-birth"); reveal(); };
+      function reveal() {
+        $("b-name").textContent = S.name;
+        const rows = [["性别", S.male ? "男" : "女"], ["省份", S.p.n], RES[S.p.n] ? ["户籍", huji(S)] : ["户口", S.urban ? "城镇" : "农村"], ["家庭", `第 ${S.fam + 1} 级 · ${famShow(S)}`], ["家境", `家庭月收入${hhMon(S)}`], S.src && ["家底", srcTxt(S)], ["预期寿命", S.le + " 岁"]].filter(Boolean);
+        $("b-facts").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+        $("b-av").innerHTML = drawAvatar(S);
+        $("b-odds").innerHTML = odds(S.p, S.urban, S.male);
+        $("bcard").hidden = false;
+      }
+
+      // 头像：绘本风 SVG。阶段按真实年龄，白发与皱纹按“显老年龄”（农村 ×1.15）
+      const STG = ["婴儿", "儿童", "少年", "青年", "中年", "老年"];
+      const avStage = (a) => (a < 3 ? 0 : a < 12 ? 1 : a < 18 ? 2 : a < 35 ? 3 : a < 60 ? 4 : 5);
+      function drawAvatar(s) {
+        const g = s.g, st = avStage(s.age), va = s.age * (s.urban ? 1 : 1.15), K = "#3a2a1e";
+        const sk = ["#f7dcc0", "#efc7a0", "#e2b086", "#cf9668"][g.skin];
+        const hc = st === 5 || va >= 65 ? "#ebe6de" : va >= 45 ? "#9a948c" : "#2e2622";
+        const j = s.juan || 0, wt = st ? s.wt || 0 : 0, V = looks(s), hf = V.thin ? ' fill-opacity=".72"' : "";
+        const W = (st ? [33, 30, 32, 31][g.face] : 35) + wt * 3, H = st ? [33, 37, 34, 36][g.face] : 33, cx = 80, cy = st ? 70 : 76, T = cy - H;
+        const P = (d, f = "none", x = "") => `<path d="${d}" fill="${f}"${x}/>`;
+        const thin = ' stroke-width="1.8"';
+        let o = `<svg viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="${s.name}，${STG[st]}" stroke="${K}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">`;
+        // 后发
+        if (st && !s.male) {
+          const L = cy + [26, 52, 10, 6][g.hair];
+          o += P(`M${cx - W - 7},${cy} Q${cx - W - 8},${T - 12} ${cx},${T - 10} Q${cx + W + 8},${T - 12} ${cx + W + 7},${cy} L${cx + W + 6},${L} Q${cx},${L + 6} ${cx - W - 6},${L}Z`, hc, hf);
+          if (g.hair === 2) o += P(`M${cx + W},${cy - 14} q22,4 16,40 q-12,-10 -16,-30Z`, hc);
+          if (g.hair === 3) o += `<circle cx="${cx}" cy="${T - 8}" r="13" fill="${hc}"/>`;
+        }
+        // 衣服
+        const C = V.dance ? "#b8475a" : st === 0 ? "#f2c4bc" : st === 1 ? "#f5f2ea" : st === 2 ? "#3f63a8" : s.urban ? (st === 5 ? "#cbbfae" : "#dbe6f0") : st === 5 ? "#7a6a55" : "#56708c";
+        if (st === 0) o += P(`M${cx - 44},160 Q${cx - 48},${cy + 30} ${cx},${cy + 28} Q${cx + 48},${cy + 30} ${cx + 44},160Z`, C) + P(`M${cx - 40},${cy + 58} Q${cx},${cy + 68} ${cx + 40},${cy + 58}`);
+        else {
+          o += P(`M${cx - 10},${cy + H - 6}v16h20v-16`, sk) + P(`M${28 - wt * 5},160 Q${30 - wt * 5},${cy + 46} ${cx},${cy + 42} Q${130 + wt * 5},${cy + 46} ${132 + wt * 5},160Z`, C);
+          if (st === 1) o += P(`M${cx - 16},112 L${cx},126 L${cx + 16},112Z`, "#d6392c") + P(`M${cx},126 l-9,22 l9,-5 l7,6Z`, "#d6392c");
+          else if (st === 2 || V.dance) o += P("M40,128 L34,160", "none", ' stroke="#fff" stroke-width="4"') + P("M120,128 L126,160", "none", ' stroke="#fff" stroke-width="4"') + P("M68,111 L80,122 L92,111", "#fff") + P("M80,122V160");
+          else if (s.urban) o += P(`M${cx - 15},110 L${cx},124 L${cx + 15},110`, "#fff") + `<circle cx="80" cy="134" r="1.6" fill="${K}"/><circle cx="80" cy="148" r="1.6" fill="${K}"/>`;
+          else o += P("M80,114V160") + P("M44,134h18v12h-18Z") + P("M98,134h18v12h-18Z");
+          // 有钱：金链子 / 手提包
+          if (V.rich && s.male) o += P(`M${cx - 13},${cy + 44} Q${cx},${cy + 58} ${cx + 13},${cy + 44}`, "none", ' stroke="#d4a017" stroke-width="2.5"') + `<circle cx="${cx}" cy="${cy + 57}" r="2.6" fill="#d4a017" stroke-width="1.5"/>`;
+          if (V.rich && !s.male) o += P("M112,135 q8,-13 16,0", "none", ' stroke-width="2.5"') + `<rect x="108" y="134" width="24" height="20" rx="4" fill="#a8613a" stroke-width="2.5"/><circle cx="120" cy="141" r="2" fill="#d4a017" stroke="none"/>`;
+        }
+        // 头
+        o += `<circle cx="${cx - W}" cy="${cy + 4}" r="7" fill="${sk}"/><circle cx="${cx + W}" cy="${cy + 4}" r="7" fill="${sk}"/>`;
+        const f = st ? g.face : 0;
+        o += f === 2 ? `<rect x="${cx - W}" y="${T}" width="${2 * W}" height="${2 * H}" rx="${W * 0.6}" fill="${sk}"/>`
+          : f === 3 ? P(`M${cx - W},${cy - 4} Q${cx - W},${T} ${cx},${T} Q${cx + W},${T} ${cx + W},${cy - 4} Q${cx + W - 2},${cy + H * 0.7} ${cx},${cy + H} Q${cx - W + 2},${cy + H * 0.7} ${cx - W},${cy - 4}Z`, sk)
+          : `<ellipse cx="${cx}" cy="${cy}" rx="${W}" ry="${H}" fill="${sk}"/>`;
+        // 前发
+        if (!st) o += P(`M${cx - 4},${T + 3} q2,-10 10,-6`);
+        else if (V.hair2) {
+          // 卷：地中海 → 全秃，头顶反光
+          if (!V.hair3) o += P(`M${cx - W - 3},${cy + 2} Q${cx - W - 4},${cy - 20} ${cx - W + 8},${cy - 24} Q${cx - W + 3},${cy - 12} ${cx - W + 3},${cy + 2}Z`, hc) + P(`M${cx + W + 3},${cy + 2} Q${cx + W + 4},${cy - 20} ${cx + W - 8},${cy - 24} Q${cx + W - 3},${cy - 12} ${cx + W - 3},${cy + 2}Z`, hc);
+          o += P(`M${cx - 12},${T + 8} q6,-4 13,-3`, "none", ' stroke="#fff" stroke-width="2.5" opacity=".8"');
+        } else {
+          const cap = `M${cx - W - 3},${cy + 2} C${cx - W - 5},${T - 18} ${cx + W + 5},${T - 18} ${cx + W + 3},${cy + 2}`;
+          let z = "";
+          if (s.male) {
+            if (g.hair === 2) { z = `L${cx + W},${cy - 10}`; for (let i = 1; i <= 6; i++) z += ` L${cx + W - (i * W) / 3},${i % 2 ? cy - 20 : cy - 10}`; }
+            else z = [`L${cx + W},${cy - 10} Q${cx},${T + 6} ${cx - W},${cy - 10}`, `L${cx + W},${cy - 6} Q${cx + 6},${T + 4} ${cx - 8},${T + 16} Q${cx - W + 2},${T + 14} ${cx - W},${cy - 8}`, "", `L${cx + W},${cy - 16} Q${cx},${T - 2} ${cx - W},${cy - 16}`][g.hair];
+          } else z = [`L${cx + W},${cy} L${cx + W - 2},${cy - 14} Q${cx},${cy - 10} ${cx - W + 2},${cy - 14} L${cx - W},${cy}`, `L${cx + W},${cy + 6} Q${cx + W - 6},${T + 10} ${cx},${T + 6} Q${cx - W + 6},${T + 10} ${cx - W},${cy + 6}`, `L${cx + W},${cy + 4} Q${cx + W - 8},${T + 10} ${cx - 6},${cy - 14} Q${cx - W + 4},${T + 14} ${cx - W},${cy + 2}`, `L${cx + W},${cy - 4} Q${cx + W - 4},${T + 8} ${cx},${T + 4} Q${cx - W + 4},${T + 8} ${cx - W},${cy - 4}`][g.hair];
+          if (V.hair1) z = `L${cx + W},${cy - 12} Q${cx + W - 2},${T + 4} ${cx + W - 10},${T + 5} Q${cx + 6},${T + 14} ${cx},${T + 15} Q${cx - 6},${T + 14} ${cx - W + 10},${T + 5} Q${cx - W + 2},${T + 4} ${cx - W},${cy - 12}`;
+          o += P(`${cap} ${z}Z`, hc, hf);
+        }
+        // 五官
+        const er = st ? 2.8 : 3.6, ex = st ? 12 : 11;
+        o += `<circle cx="${cx - ex}" cy="${cy + 2}" r="${er}" fill="${K}" stroke="none"/><circle cx="${cx + ex}" cy="${cy + 2}" r="${er}" fill="${K}" stroke="none"/>`;
+        if (st) o += P(`M${cx - 17},${cy - 7} q5,-3 10,0 M${cx + 7},${cy - 7} q5,-3 10,0`, "none", thin);
+        // 卷：黑眼圈（女）
+        if (V.eye1) o += P(`M${cx - ex - 5},${cy + 7} q5,3 10,0 M${cx + ex - 5},${cy + 7} q5,3 10,0`, "none", ` stroke="#7d6680" stroke-width="${V.eye2 ? 3 : 1.8}" opacity="${V.eye2 ? 0.85 : 0.55}"`);
+        if (V.eye2) o += P(`M${cx - ex - 4},${cy + 10} q4,2 8,0 M${cx + ex - 4},${cy + 10} q4,2 8,0`, "none", ' stroke="#7d6680" stroke-width="1.5" opacity=".6"');
+        // 眼镜：读书 2 年，5 年镜片变厚
+        if (V.glass) {
+          const gw = V.thick ? 3.6 : 2;
+          o += `<g stroke-width="${gw}"><circle cx="${cx - 12}" cy="${cy + 2}" r="8" fill="#fff" fill-opacity=".25"/><circle cx="${cx + 12}" cy="${cy + 2}" r="8" fill="#fff" fill-opacity=".25"/>` + P(`M${cx - 4},${cy + 1} q4,-3 8,0 M${cx - 20},${cy} L${cx - W},${cy - 2} M${cx + 20},${cy} L${cx + W},${cy - 2}`) + "</g>";
+          if (V.thick) o += `<g stroke-width="1" opacity=".5" fill="none"><circle cx="${cx - 12}" cy="${cy + 2}" r="5"/><circle cx="${cx + 12}" cy="${cy + 2}" r="5"/></g>`;
+        }
+        // 心情：<35 乱发、嘴角下垂；>70 笑开、脸红
+        const sad = st && V.sad, glad = st && V.happy;
+        o += P(`M${cx},${cy + 8} q2,3 -1,4`, "none", ' stroke-width="2"');
+        o += sad ? P(`M${cx - 6},${cy + 19} Q${cx},${cy + 14} ${cx + 6},${cy + 19}`) : glad ? P(`M${cx - 8},${cy + 15} Q${cx},${cy + 25} ${cx + 8},${cy + 15}Z`, "#c4574c") : P(`M${cx - 6},${cy + 16} Q${cx},${cy + 21} ${cx + 6},${cy + 16}`);
+        const bo = glad ? 0.8 : sad ? 0.2 : 0.45, br = glad ? 6.5 : 5;
+        o += `<circle cx="${cx - 19}" cy="${cy + 12}" r="${br}" fill="#ef8f7f" opacity="${bo}" stroke="none"/><circle cx="${cx + 19}" cy="${cy + 12}" r="${br}" fill="#ef8f7f" opacity="${bo}" stroke="none"/>`;
+        if (sad) o += P(`M${cx - 10},${T - 2} q-6,-8 1,-13 M${cx + 2},${T - 4} q7,-6 0,-13 M${cx + 14},${T} q9,-4 6,-11 M${cx - 20},${T + 4} q-8,-3 -6,-10`, "none", thin);
+        // 胖：双下巴
+        if (wt >= 2) o += P(`M${cx - 10},${cy + H + 2} Q${cx},${cy + H + 7} ${cx + 10},${cy + H + 2}`, "none", thin);
+        if (g.mark === 1) o += `<circle cx="${cx + 14}" cy="${cy + 18}" r="1.6" fill="${K}" stroke="none"/>`;
+        if (g.mark === 2) o += P(`M${cx + 12},${cy + 17} q2,2 0,4`, "none", ' stroke-width="2"');
+        // 皱纹：显老 40 / 55 / 70
+        if (va >= 40) o += P(`M${cx - W + 3},${cy} l-4,-2 M${cx - W + 3},${cy + 3} l-4,1 M${cx + W - 3},${cy} l4,-2 M${cx + W - 3},${cy + 3} l4,1`, "none", thin);
+        if (va >= 55) o += P(`M${cx - 9},${cy + 10} q-4,5 -2,10 M${cx + 9},${cy + 10} q4,5 2,10`, "none", thin);
+        if (va >= 70) o += P(`M${cx - 10},${cy - 13} q10,-3 20,0 M${cx - 16},${cy + 6} q4,2 8,0 M${cx + 8},${cy + 6} q4,2 8,0`, "none", thin);
+        // 广场舞：红扇子
+        if (V.dance) o += `<g stroke-width="2"><path d="M140,140 L127,117.5 A26,26 0 0 1 153,117.5Z" fill="#e0352b"/><path d="M140,140 L135.5,114.4 M140,140 L144.5,114.4" stroke="#f3c64a"/></g>`;
+        // 很有钱：一只柯基
+        if (V.corgi) o += `<g stroke-width="2"><path d="M8,160v-6 M15,160v-6 M27,160v-6 M34,160v-6 M5,147 q-3,-3 -1,-6"/><ellipse cx="21" cy="150" rx="17" ry="8" fill="#e39a4a"/><path d="M12,154 q9,5 18,0" fill="#fff"/><path d="M34,137 l1,-9 l6,7 M41,135 l5,-7 l1,9" fill="#e39a4a"/><circle cx="40" cy="141" r="7.5" fill="#e39a4a"/><path d="M37,145 q5,4 10,0" fill="#fff"/><circle cx="42" cy="140" r="1.3" fill="${K}" stroke="none"/><circle cx="47" cy="143" r="1.3" fill="${K}" stroke="none"/></g>`;
+        return o + "</svg>";
+      }
+      // 状态叠加：每年在 tick 里累计，首次出现时记一行
+      const RICH = 100, VRICH = 250;
+      function looks(s) {
+        const j = s.juan || 0, d = s.study || 0, w = s.wt || 0, V = {};
+        if (j >= 3) V[s.male ? "hair1" : "eye1"] = 1;
+        if (j >= 5) V[s.male ? "hair2" : "eye2"] = 1;
+        if (j >= 8) V[s.male ? "hair3" : "thin"] = 1;
+        if (d >= 2) V.glass = 1;
+        if (d >= 5) V.thick = 1;
+        if (w >= 1) V.wt1 = 1;
+        if (w >= 2) V.wt2 = 1;
+        if (s.money >= RICH) V.rich = 1;
+        if (s.money >= VRICH) V.corgi = 1;
+        if (s.age >= 3 && s.joy < 35) V.sad = 1;
+        if (s.age >= 3 && s.joy > 70) V.happy = 1;
+        if (s.age >= 60 && s.hp > 60) V.dance = 1;
+        return V;
+      }
+      const OVMSG = {
+        hair1: "照镜子时发现发际线又往后退了一点。", hair2: "头顶成了“地中海”，出门开始戴帽子。", hair3: "头发彻底掉光了，洗头只要十秒。",
+        eye1: "熬出了黑眼圈，遮瑕越用越快。", eye2: "黑眼圈深得像烟熏妆。", thin: "梳头时掉的头发，一把比一把多。",
+        glass: "第一次戴上眼镜，世界清楚了。", thick: "眼镜片又厚了一圈。",
+        wt1: "腰带往外松了一格。", wt2: "体检单上写着“超重”。",
+        corgi: "养了一只柯基，取名“旺财”。", sad: "好久没打理自己，头发乱糟糟的。", happy: "最近总是笑着，脸上有了气色。", dance: "跳广场舞，站上了C位。",
+      };
+      function overlays(line) {
+        const a = S.age, f = S.focus;
+        if (a >= 16 && a < 60 && (f === "拼事业" || f === "搞副业" || S.job === 1.6 || (S.track === "work" && S.job === 1) || line === "加班到深夜。")) S.juan++;
+        if (f === "学习" || f === "自我提升" || line === "熬夜刷题。" || line === "写作业写到深夜。" || (S.track === "high" && (a === 18 || (a >= 19 && a <= 22 && S.edu > 1)))) S.study++;
+        if (f === "养生" || line === "开始注意养生。") S.wt = Math.max(0, S.wt - 1);
+        else if (S.juan >= 4 && S.hp < 50) S.wt = Math.min(2, S.wt + 1);
+        const V = looks(S);
+        Object.keys(V).forEach((k) => {
+          if (S.seen[k]) return;
+          S.seen[k] = 1;
+          log(k === "rich" ? (S.male ? "脖子上多了一条小金链子。" : "拎上了第一只名牌包。") : OVMSG[k]);
+        });
+      }
+      function showAv() {
+        const el = $("l-av"), st = String(avStage(S.age));
+        if (el.classList.contains("is-fade")) return;
+        if (el.dataset.st && el.dataset.st !== st && !REDUCED) {
+          el.classList.add("is-fade");
+          return setTimeout(() => { if (S) { el.innerHTML = drawAvatar(S); el.dataset.st = avStage(S.age); } el.classList.remove("is-fade"); }, 300);
+        }
+        el.innerHTML = drawAvatar(S); el.dataset.st = st;
+      }
+      $("b-start").onclick = () => {
+        document.documentElement.classList.remove("is-ended");
+        show("s-life"); $("feed").innerHTML = ""; $("today").innerHTML = ""; delete $("l-av").dataset.st; delete $("focus").dataset.k;
+        S.y0 = new Date().getFullYear(); S.tags = new Set(); S.dead = false; S.lt = null;
+        S.juan = 0; S.study = 0; S.wt = 0; S.seen = {}; S.snaps = []; S.yinc = 0;
+        paused = false; blocked = false; skipping = false; mult = 1; Q = []; keys();
+        newYear(); log(SAR(S.p) ? `${S.name}出生在${S.p.n}的一个${famShow(S)}。` : `${S.name}出生在${S.p.n}的${S.urban ? "城镇" : "农村"}家庭 · ${famShow(S)}。`, "big"); render(); setMood("温馨", 0); run();
+      };
+      const ICO = {
+        pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+        play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>',
+      };
+      const pop = (open) => { $("spd-pop").hidden = !open; $("b-spd").setAttribute("aria-expanded", open); };
+      $("b-pause").onclick = () => { paused = !paused; skipping = false; pop(false); keys(); paused ? stop() : run(); };
+      $("b-spd").onclick = (e) => { e.stopPropagation(); pop($("spd-pop").hidden); };
+      document.addEventListener("click", (e) => { if (!e.target.closest("#spd-pop")) pop(false); });
+      document.querySelectorAll("[data-speed]").forEach((b) => (b.onclick = () => { mult = +b.dataset.speed; paused = false; skipping = false; pop(false); keys(); run(); }));
+      $("b-skip").onclick = () => { skipping = true; paused = false; keys(); run(); };
+      function hist(open) {
+        $("hist").classList.toggle("is-open", open); $("scrim").hidden = !open;
+        $("b-hist").setAttribute("aria-expanded", open);
+        if (open) { $("hist").querySelector(".x-log").scrollTop = 0; $("b-hclose").focus(); }
+      }
+      $("b-hist").onclick = () => hist(true);
+      $("b-hclose").onclick = $("scrim").onclick = () => { hist(false); $("b-hist").focus(); };
+      function help(open) {
+        $("help").hidden = !open;
+        $("h-k").textContent = S && S.Kb != null ? `你现在：底子 ${Math.round(S.Kb)} / 活知识 ${Math.round(S.Ka)}` : "";
+        $("h-r").textContent = S && S.Rf != null ? `家人 ${Math.round(S.Rf)} / 朋友 ${Math.round(S.Rp)} / 同事 ${Math.round(S.Rw)}` : "";
+        if (open) { stop(); $("b-hok").focus(); } else { $("b-help").focus(); run(); }
+      }
+      $("b-help").onclick = () => help(true);
+      $("b-hok").onclick = () => help(false);
+      $("help").onclick = (e) => { if (e.target === $("help")) help(false); };
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") { pop(false); if (!$("help").hidden) help(false); if ($("hist").classList.contains("is-open")) hist(false); } });
+      function keys() {
+        const pb = $("b-pause");
+        pb.innerHTML = paused ? ICO.play : ICO.pause;
+        pb.setAttribute("aria-label", paused ? "继续" : "暂停"); pb.title = paused ? "继续" : "暂停";
+        pb.setAttribute("aria-pressed", paused);
+        $("b-spd").textContent = mult + "×"; $("b-spd").setAttribute("aria-label", "速度 " + mult + "×");
+        document.querySelectorAll("[data-speed]").forEach((b) => b.setAttribute("aria-pressed", !paused && +b.dataset.speed === mult));
+        const none = !S || S.dead || S.age >= 23, sk = $("b-skip");
+        sk.disabled = none || skipping;
+        const t = none ? "已没有抉择" : skipping ? "快进中……" : "跳到下一个抉择";
+        sk.setAttribute("aria-label", t); sk.title = t;
+      }
+      // 1× 每年 1.6 秒，当年新文字超过 40 字后每字 +30ms，上限 6 秒
+      const yearMs = () => Math.min(6000, YEAR_MS + 30 * Math.max(0, (S.yc || 0) - 40)) / mult;
+      const momentOpen = () => !$("moment").hidden;
+      function run() {
+        stop(); if (paused || blocked || momentOpen() || !S || S.dead) return;
+        timer = setTimeout(() => { timer = null; tick(); if (!timer) run(); }, skipping ? SKIP_MS : yearMs());
+      }
+      function stop() { clearTimeout(timer); timer = null; }
+      // 抉择与回望：逐个出现，从不重叠，任何速度下都暂停
+      // 队列是活的：抉择回调里新排进的弹窗（如 moment）也会接着出现
+      let Q = [];
+      function flow() {
+        if (momentOpen()) return; // 时刻还开着：等玩家点按钮，它关上时会自己接着走
+        if (!Q.length) { blocked = false; keys(); return run(); }
+        blocked = true; stop(); keys();
+        const first = Q.shift();
+        resume = () => flow(); if (first() === false) flow(); // 返回 false：这件事已不成立，直接看下一件
+      }
+      function reflect(age) {
+        skipping = false; keys();
+        $("r-age").textContent = age + " 岁 · 停一停";
+        $("r-q").textContent = REFLECT[age];
+        $("reflect").hidden = false; $("r-go").focus();
+      }
+      $("r-go").onclick = () => { $("reflect").hidden = true; resume(); };
+
+      // 今年重心：按阶段的选项 [名称, 效果说明, 效果]
+      const FOCUS = {
+        kid: [["学习", "知识+4 幸福−1", { iq: 4, joy: -1 }], ["玩耍", "幸福+4 朋友+3", { joy: 4, Rp: 3 }], ["运动", "健康+4 · 健康衰退放慢", { hp: 4 }], ["帮家里", "家人+2 知识−1", { Rf: 2, iq: -1 }], ["兴趣", "幸福+3 知识+1 · 坚持三年养成读书习惯", { joy: 3, iq: 1 }]],
+        adult: [["拼事业", "收入+15% 同事+2 健康−3 幸福−2 · 算“卷”", { mul: 1.15, hp: -3, joy: -2, Rw: 2 }], ["恋爱", "恋爱事件概率×3", { love: 3 }], ["家人朋友", "家人+3 朋友+3 幸福+3", { Rf: 3, Rp: 3, joy: 3 }], ["养生", "健康+5 花费+3千 · 减重", { hp: 5, cost: 0.3 }], ["自我提升", "知识+4 升职/跳槽概率↑", { iq: 4, up: 2.5 }], ["搞副业", "收入+5千–3万 健康−2 · 算“卷”", { side: 1, hp: -2 }], ["躺平", "幸福+3 收入−20%", { joy: 3, mul: 0.8 }], ["均衡", "健康幸福+1 知识+0.5 人情各+0.3", { hp: 1, joy: 1, iq: 0.5, Rf: 0.3, Rp: 0.3, Rw: 0.3 }]],
+        old: [["带孙子", "家人+3 幸福+2 健康−1", { Rf: 3, joy: 2, hp: -1 }], ["广场舞", "健康+3 幸福+3 朋友+2", { hp: 3, joy: 3, Rp: 2 }], ["老年大学", "知识+3 朋友+2", { iq: 3, Rp: 2 }], ["养生", "健康+5 花费+3千 · 减重", { hp: 5, cost: 0.3 }], ["陪老伴", "幸福+3 家人+3", { joy: 3, Rf: 3 }]],
+      };
+      const fStage = (a) => (a < 6 ? null : a < 18 ? "kid" : a < 60 ? "adult" : "old");
+      function autoFocus() {
+        const a = S.age;
+        if (a < 18) return S.hp < 50 ? "运动" : a < 12 ? "玩耍" : "学习";
+        if (a < 60) return student() ? "自我提升" : S.hp < 45 ? "养生" : S.joy < 35 || S.rel < 30 ? "家人朋友" : S.money < 0 ? "搞副业" : !S.wed && !(S.F && S.F.noMarry) && a <= 32 ? "恋爱" : a < 35 ? "拼事业" : "均衡";
+        return S.hp < 50 ? "养生" : S.kids.length && a < 75 ? "带孙子" : S.wed ? "陪老伴" : "广场舞";
+      }
+      function focusNow() {
+        const k = fStage(S.age); if (!k) return null;
+        const L = FOCUS[k];
+        return L.find((o) => o[0] === S.pick) || L.find((o) => o[0] === autoFocus());
+      }
+      function renderFocus() {
+        const k = fStage(S.age), box = $("focus");
+        $("f-box").hidden = !k; if (!k) { if ($("f-note")) $("f-note").textContent = ""; return; }
+        if (box.dataset.k !== k) {
+          box.dataset.k = k;
+          box.innerHTML = FOCUS[k].map(([n, t]) => `<button class="x-fchip" data-f="${n}" title="${t}" aria-label="${n}：${t}">${n}</button>`).join("") + `<button class="x-fchip" data-f="自动" title="按阶段自动选择" aria-label="自动：按阶段自动选择">自动</button>`;
+        }
+        const fo = focusNow(), auto = !FOCUS[k].some((o) => o[0] === S.pick);
+        box.querySelectorAll(".x-fchip").forEach((b) => {
+          const n = b.dataset.f;
+          b.setAttribute("aria-pressed", n === "自动" ? auto : n === S.pick);
+          b.classList.toggle("is-auto", auto && n === fo[0]);
+        });
+        const fn = $("f-note"); if (fn) fn.textContent = `重心 · ${auto ? "自动：" : ""}${fo[0]} · ${fo[1]}`;
+      }
+      $("focus").onclick = (e) => {
+        const b = e.target.closest(".x-fchip"); if (!b || !S || S.dead) return;
+        S.pick = b.dataset.f; renderFocus();
+      };
+
+      function render() {
+        $("l-age").textContent = S.age;
+        const who = `${S.name} · ${place(S)} · ${famShort(S)}${eduTag() ? " · " + eduTag() : ""}`;
+        $("l-who").textContent = who; $("l-who").title = who;
+        $("l-year").textContent = "· " + (S.y0 + S.age);
+        const m = S.money, d = S.dy, lm = $("l-money");
+        lm.innerHTML = `${m < 0 ? "负债" : "存款"} <b>${Math.abs(m).toFixed(1)}</b> 万${d != null ? `（${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}）` : ""} · 年收入 <b>${(S.yinc || 0).toFixed(1)}</b> 万`;
+        lm.classList.toggle("is-debt", m < 0);
+        renderFocus();
+        $("bars").innerHTML = [["健康", S.hp], ["幸福", S.joy], ["知识", S.iq], ["人情", S.rel]]
+          .map(([k, v]) => `<div class="x-bar"><span>${k}</span><i><b style="width:${v}%"></b></i><span>${v}</span></div>`).join("");
+        // 年份标题：今年知识、人情的净变化
+        if (S.iq0 != null) {
+          const dl = [["知识", S.iq - S.iq0], ["人情", S.rel - S.rel0]].filter(([, d]) => d).map(([k, d]) => k + (d > 0 ? "+" : "−") + Math.abs(d)).join(" ");
+          document.querySelectorAll(`[data-age="${S.age}"] .x-dl`).forEach((e) => (e.textContent = dl));
+        }
+        const sn = avStage(S.age);
+        if (S.snaps && !S.snaps[sn]) S.snaps[sn] = { age: S.age, svg: drawAvatar(S) };
+        showAv(); keys();
+      }
+      function log(t, type) {
+        const tag = TAG[t] || {};
+        type = type || S.lt || tag.t || "plain";
+        if (tag.m) S.tags.add(tag.m);
+        const feed = $("feed"); let g = feed.firstElementChild;
+        if (!g || +g.dataset.age !== S.age) {
+          g = document.createElement("li"); g.className = "x-yr"; g.dataset.age = S.age;
+          g.innerHTML = `<h4>${S.age} 岁<small> · ${S.y0 + S.age}</small><small class="x-dl"></small></h4><ul></ul>`;
+          feed.prepend(g); S.yc = 0;
+        }
+        S.yc = (S.yc || 0) + t.length; S.last = t;
+        const li = document.createElement("li"); li.className = "x-ln x-ln--" + type; li.textContent = t;
+        g.querySelector("ul").appendChild(li);
+        // 滚动时间线：最新一行在最上，逐行错开出现，出现时卡内滚回顶部
+        const r = roll();
+        let c = r.firstElementChild;
+        if (!c || +c.dataset.age !== S.age) { newYear(); c = r.firstElementChild; }
+        const now = performance.now(), gap = skipping || REDUCED ? 0 : Math.min(250, yearMs() / 6);
+        const delay = Math.max(0, rollNext - now); rollNext = now + delay + gap;
+        const cl = li.cloneNode(true); if (delay) cl.style.animationDelay = delay + "ms";
+        c.querySelector("ul").prepend(cl);
+        const top = () => r.scrollTo({ top: 0, behavior: REDUCED ? "auto" : "smooth" });
+        delay ? setTimeout(top, delay) : top();
+      }
+      let rollNext = 0;
+      function roll() {
+        const box = $("today"); let r = box.firstElementChild;
+        if (!r) { r = document.createElement("div"); r.className = "x-roll"; box.appendChild(r); }
+        return r;
+      }
+      // 新的一年：新年份块从顶部滑入，把旧年份往下推
+      function newYear() {
+        const r = roll(), old = r.firstElementChild;
+        if (old && +old.dataset.age === S.age) return;
+        const fn = $("f-note"); if (fn) fn.remove();
+        const c = document.createElement("section"); c.className = "x-yb"; c.dataset.age = S.age;
+        c.innerHTML = `<div><h4>${S.age} 岁 · ${S.y0 + S.age}<small id="f-note"></small><small class="x-dl"></small></h4><ul></ul></div>`;
+        r.prepend(c);
+        while (r.children.length > 40) r.lastElementChild.remove();
+        rollNext = performance.now() + (skipping || REDUCED ? 0 : 180);
+        r.scrollTo({ top: 0 });
+      }
+
+      const LINES = {
+        baby: ["学会了走路。", "第一次叫了“妈妈”。", "在院子里追着鸡跑。", "发了一场高烧，家人一夜没睡。", "上了幼儿园，哭了一整天。"],
+        kid: ["期末考试拿了奖状。", "被老师叫了家长。", "迷上了动画片。", "暑假去了外婆家。", "交到了最好的朋友。", "写作业写到深夜。"],
+        teen: ["第一次喜欢上一个人。", "熬夜刷题。", "和父母大吵一架。", "参加了运动会。", "成绩起起伏伏。"],
+        adult: ["加班到深夜。", "过年回家被催婚。", "换了一份工作。", "攒钱买了辆车。", "和朋友去旅行。", "体检查出小毛病。", "升职加薪了。", "房贷压得喘不过气。"],
+        mid: ["孩子上学了，开销变大。", "父母身体变差，常跑医院。", "开始注意养生。", "和老同学聚会。", "在单位熬成了老资格。"],
+        old: ["退休了，每天去公园。", "带孙辈。", "跳广场舞。", "老朋友一个个离开。", "腿脚不如从前了。", "学会了用手机视频通话。"],
+      };
+      // 钱（单位：万元）。参考：2024 城镇人均可支配收入 54,188，农村 23,119
+      // SIT 是高中学历的基准，学历溢价由 eduMul() 乘上去
+      const SIT = { work: [4.5, 7], white: [8.5, 20], gov: [7.5, 11], farm: [2, 3] };
+      const R = Math.random, f1 = (v) => v.toFixed(1);
+      const student = () => S.track === "high" && S.age <= 22;
+      // 学历档 S.tierK（唯一一处）：高中毕业/落榜 0 · 职校 1 · 专科 2 · 普通本科 3 · 211 4 · 985 5 · C9 6；考研上岸再 +1
+      const TIERK = { 高中毕业: 0, 职校: 1, 专科: 2, 普通本科: 3, "211": 4, "985": 5, C9: 6 };
+      const tk = () => Math.max(0, Math.min(7, S.tierK || 0));
+      // 学历溢价（测算，参照毕业生薪酬调查的相对倍数），按档取值
+      const EDUM = [1, 1.05, 1.15, 1.45, 1.7, 1.9, 2.1, 2.25];
+      const eduMul = () => EDUM[tk()];
+      const govMul = () => 1 + (eduMul() - 1) * 0.4; // 公务员按工资表走，溢价更平
+      const PF = () => [0, 1.1, 1, 0.92][S.p.t];
+      // 家庭背景对钱的影响（测算，按出生的级）：人脉乘数 = 长期部分 NETP + 早年加成（35 岁后五年内淡出到 NETP）；创业存活；18 岁家里给的钱；创业启动资金；首付资助
+      // 每个数组 10 格 = 第 1–10 级（由旧十档折过来：第 1 级≈旧 D1，第 2 级≈D2–D5，第 3 级≈D6–D8，第 4 级≈D9–D10 前段，第 5 级≈D10 后段，第 6 级≈前 1%，第 7 级≈高净值，第 8–10 级≈豪门）
+      const NET = [0.76, 0.915, 1.15, 1.3, 1.45, 1.65, 1.75, 1.85, 1.85, 1.85], NETP = [0.73, 0.885, 1.1, 1.42, 1.75, 2.2, 2.45, 2.6, 2.6, 2.6];
+      const BOSS_S = [-0.07, -0.028, 0.03, 0.08, 0.099, 0.12, 0.14, 0.16, 0.16, 0.16];
+      const START = [0, 0.5, 3.3, 13, 20, 30, 60, 200, 400, 800], SEED = [0, 1.8, 13, 48, 72, 100, 150, 300, 600, 1200];
+      const HELP_P = [0.05, 0.24, 0.65, 0.915, 0.965, 1, 1, 1, 1, 1], HELP_F = [0.1, 0.267, 0.65, 0.975, 1, 1, 1, 1, 1, 1];
+      // 家里给房（婚房 / 投资房，25–34 岁）：一生的总概率与房值（万）；继承按级折算房产增值
+      const GIFT_P = [0, 0.007, 0.187, 0.6, 0.745, 0.85, 0.9, 0.95, 0.95, 0.95], GIFT_V = [0, 7.5, 63, 240, 330, 400, 800, 2000, 4000, 8000], INHM = [0.6, 0.85, 1.2, 1.42, 1.41, 1.3, 1.3, 1.3, 1.3, 1.3];
+      // 兜底：钱上出了大窟窿（创业失败、负债），家里拿钱接住的概率（五年一次）；失业时能回家啃老的概率
+      const RESC = [0.02, 0.088, 0.273, 0.5, 0.61, 0.75, 0.85, 0.95, 0.95, 0.95], KEN = [0, 0.087, 0.41, 0.775, 0.895, 1, 1, 1, 1, 1];
+      // 退学打工的压力（16–17 岁，第 1–2 级）、补习、学区之外的重点中学加分、高考资源、学习底子、回老家托关系
+      const DROP = [0.14, 0.06], TUTOR = [0, 0.04, 0.2, 0.33, 0.359, 0.38, 0.38, 0.38, 0.38, 0.38];
+      const KEYB = [0, 0.041, 0.11, 0.167, 0.186, 0.2, 0.2, 0.2, 0.2, 0.2], GKB = [-0.1, -0.048, 0.025, 0.085, 0.106, 0.12, 0.12, 0.12, 0.12, 0.12];
+      const KNOWB = [0.8, 0.9, 1.04, 1.15, 1.18, 1.2, 1.2, 1.2, 1.2, 1.2], NW = [0.6, 0.8, 1.1, 1.39, 1.5, 1.6, 1.6, 1.6, 1.6, 1.6];
+      const HOMEW = [0, 0.04, 0.15, 0.31, 0.38, 0.45, 0.45, 0.45, 0.45, 0.45], HOMEJ = [0, 0.167, 0.5, 0.75, 0.83, 0.9, 0.9, 0.9, 0.9, 0.9];
+      // 家底来源的效果：创业本钱 seed、兜底 resc、创业存活 boss、找工作的人脉 nw、每年房租 rent（万，按 srcG 档）
+      const SRCX = {
+        biz: { seed: 1.6, resc: 1.25, boss: 0.04, nw: 1.05 }, exec: { seed: 0.9, resc: 1, boss: 0.01, nw: 1.15 }, fang: { seed: 1.1, resc: 1.1, boss: 0, nw: 1 },
+        cadre: { seed: 0.7, resc: 0.9, boss: 0, nw: 1.1 }, pro: { seed: 0.8, resc: 1, boss: 0, nw: 1.05 }, inv: { seed: 1.1, resc: 0.9, boss: 0.01, nw: 1 }, dual: { seed: 0.8, resc: 0.9, boss: 0, nw: 1 },
+      };
+      const sx = (k) => (S.src ? SRCX[S.src][k] : k === "boss" ? 0 : 1);
+      const seedOf = () => SEED[S.fam] * sx("seed");
+      const RENT = [1.2, 2, 3, 4.5, 8, 12, 24];
+      // 越往上越能接住，但不是无限：企业主家庭兜底最强
+      const rescP = () => Math.min(0.97, RESC[S.fam0] * sx("resc"));
+      const netMul = () => { const a = S.age, k = a <= 35 ? 1 : a >= 40 ? 0 : (40 - a) / 5, b = NETP[S.fam0]; return b + (NET[S.fam0] - b) * k; };
+      // 家里给的房子和继承来的家底，每年带来租金、理财收益（约 2.5%）
+      const assetInc = () => ((S.famProp || 0) + (S.famCap || 0)) * 0.025 * (0.85 + 0.3 * R());
+      const MEDC = [0, 0.075, 0.307, 0.625, 0.745, 0.85, 0.9, 0.95, 0.95, 0.95]; // 大病自付里家里能出的份额
+      const potUse = (v) => { v = Math.max(0, Math.min(v, S.famPot)); S.famPot -= v; return v; };
+      function income() {
+        if (S.age >= 60) return S.urban ? (S.sit === "gov" ? 7 : 3.5) : 0.25 + 0.6 * S.kids.length;
+        if (S.heir) return (R() < 0.1 ? -30 : 40 + 120 * R()) * S.cut * (S.heirM || 1);
+        if (S.sit === "boss") { const r = R() + BOSS_S[S.fam] + pf("boss", 0) + sx("boss"); return r < 0.55 ? -10 + 15 * R() : ((r < 0.9 ? 5 + 15 * R() : 20 + 30 * R()) + Math.min(20, (S.seed || 0) * 0.1)) * NETP[S.fam0]; } // 家里的人脉和客户
+        const [lo, hi] = SIT[S.sit], m = S.sit === "farm" ? 1 : S.sit === "gov" ? govMul() : eduMul();
+        return (lo + (hi - lo) * S.lvl) * m * S.cut * PF() * (0.7 + 0.6 * R()) * (S.sit === "farm" ? Math.pow(S.luck || 1, 0.7) : netMul() * (S.luck || 1)); // 务农也有种养大户
+      }
+      function famStart() {
+        // 豪车生日礼物：前 5% 起才有
+        if (S.top >= 1 && S.fam >= 4 && R() < [0, 0.15, 0.35, 0.55][S.top] + (S.src === "biz" ? 0.1 : 0)) {
+          const car = S.top >= 3 ? rnd(["一辆保时捷 911", "一辆迈巴赫"]) : S.top === 2 ? rnd(["一辆保时捷 Macan", "一辆奔驰 G 级"]) : rnd(["一辆宝马 3 系", "一辆特斯拉 Model Y"]);
+          S.famPot = Math.max(0, S.famPot - (S.top >= 2 ? 100 : 30)); S.joy = clamp(S.joy + 4); S.car = 1;
+          log(`十八岁生日，车库里停着${car}，方向盘上系着一个蝴蝶结。`, "warm");
+        }
+        const v = potUse(START[S.fam] * (0.6 + 0.8 * R()));
+        if (v < 0.1) return log("十八岁生日，家里没什么钱，妈妈煮了一碗长寿面，卧了两个鸡蛋。");
+        S.money += v;
+        log(S.fam >= 5 ? `十八岁生日，家里给你开了一张卡，里面有 ${Math.round(v)} 万。` : v >= 1 ? `十八岁生日，爸妈给你存了 ${f1(v)} 万：“以后用得着。”` : `十八岁生日，爸妈塞给你一个红包，${Math.round(v * 10000)} 块。`, "warm");
+      }
+      // 父亲走后分家产：父母剩下的钱，兄弟姐妹平分
+      function inherit() {
+        S.inh = 1; let v = (Math.max(0, S.famPot) * INHM[S.fam0]) / (1 + (S.sibs || 0)); S.famPot = 0;
+        if (v < 1) return log("父亲没留下什么钱，只留下一屋子旧物。");
+        // 继承纠纷：家底越厚越容易打官司
+        if (S.fam0 >= 4 && v >= 100 && R() < 0.12 + 0.05 * Math.max(0, S.top) + (S.sibs ? 0.1 : 0)) {
+          const k = 0.6 + 0.25 * R(); v *= k; relAdd("Rf", -6); S.joy = clamp(S.joy - 6);
+          log(rnd([S.sibs ? "分家产时兄弟姐妹闹上了法庭，官司打了两年。" : "葬礼刚过，叔伯就拿着一份“补充协议”找上门，官司打了两年。", "一个从没见过的“同父异母”的兄弟出现了，带着律师。"]) + `律师费和让出去的份额，吃掉了约 ${Math.round((1 - k) * 100)}%。`, "bad");
+        }
+        S.money += v; S.famCap = (S.famCap || 0) + v;
+        log(`料理完后事，${S.sibs ? `兄弟姐妹 ${S.sibs + 1} 人分了家里的积蓄和房子，` : ""}你继承了 ${v >= 100 ? Math.round(v) : f1(v)} 万。`, v >= 100 ? "big" : "plain");
+      }
+      // 出国留学：主要是第 4 级及以上；学历按 985 档算收入
+      const abroadCost = () => (S.fam >= 6 ? 250 : S.fam === 5 ? 150 : 80);
+      function abroad() {
+        const c = potUse(abroadCost()); S.money -= 5;
+        S.uni = "海外名校"; S.tierK = TIERK["985"]; S.edu = 1.8; S.abroad = 1; S.retake = false; S.joy += 6; leave();
+        log(`拿到了海外一所名校的录取。家里为你准备了约 ${Math.round(c)} 万的学费和生活费。`, "big");
+      }
+      function expense() {
+        const a = S.age;
+        let e = (S.loc === "rural" ? 1.5 : 3.5) * (a >= 60 ? 0.8 : 1) * pf("cost");
+        if (S.loc === "big" && !S.house) e += 2.4;
+        return e + 2 * S.kids.filter((k) => a - k < 18).length + (S.fx.cost || 0);
+      }
+      function money(q) {
+        const a = S.age;
+        S.yinc = 0;
+        if (a < 18 || student()) return;
+        let laid = false, ev = 0;
+        if (a < 60 && (S.sit === "work" || S.sit === "white")) {
+          const p = S.sit === "white" ? (a >= 35 && a <= 45 ? 0.06 * (1.3 - 0.08 * tk()) : 0.03) : 0.05;
+          if (R() < p) { laid = true; S.tags.add("layoff"); log(S.sit === "white" ? "公司“优化”，你被裁了，一年没有收入。" : "厂里裁员，你丢了工作，一年没有收入。", "bad"); q.push(chooseJob); }
+        }
+        // 白领、公务员每年慢慢往上走，学历越高爬得越快
+        if (!laid && a < 50 && (S.sit === "white" || S.sit === "gov")) S.lvl = Math.min(1, S.lvl + 0.01 * (0.8 + 0.1 * tk()));
+        let inc = laid ? 0 : income();
+        if (!laid && a < 60) {
+          if (inc > 0) inc *= S.fx.mul || 1;
+          if (S.fx.side) { const sd = 0.5 + 2.5 * R(); inc += sd; if (R() < 0.3) log(`副业今年进账 ${f1(sd)} 万。`, "warm"); }
+        }
+        // 房二代：家里的房租一辈子分你一份；家族信托：每年分红
+        if (S.rent && a >= 22) { const ri = S.rent * (0.85 + 0.3 * R()); inc += ri; if (!S.seen.rentF) { S.seen.rentF = 1; log(`每月初，家里几套房的租金分你一份，一年约 ${f1(ri)} 万。`, "warm"); } }
+        if (S.trust) inc += S.trust;
+        if (S.famProp || S.famCap) { const ai = assetInc(); inc += ai; if (ai >= 0.5 && !S.seen.rentI) { S.seen.rentI = 1; log(`家里给的房子和家底，今年带来 ${f1(ai)} 万租金和理财收益。`, "warm"); } }
+        S.inc += inc; S.yinc = inc;
+        if (S.sit === "white" && !laid && a < 60 && R() < 0.7) { const b = inc * (0.1 + 0.3 * R()); ev += b; S.inc += b; S.yinc += b; log(`年终奖到账 ${f1(b)} 万。`, "warm"); }
+        let mort = 0;
+        if (S.house && S.house.left > 0) { mort = S.house.pay; if (--S.house.left === 0) log("房贷还清了，放了一挂鞭炮。", "warm"); }
+        if (S.money > 0 && R() < 0.015 * (S.iq > 70 ? 0.4 : 1)) {
+          const l = S.money * (0.2 + 0.4 * R()); ev -= l; S.joy -= 10; relAdd("Rw", -3);
+          log(a >= 60 ? `买了一堆保健品，被骗走 ${f1(l)} 万。` : rnd([`接到“公检法”电话，被电信诈骗 ${f1(l)} 万。`, `网恋遇上杀猪盘，被骗 ${f1(l)} 万。`]), "bad");
+        }
+        if (S.money > 0 && S.inv === "stock") {
+          const r = R(), g = S.money * 0.2 * 0.25;
+          if (r < 0.3) { ev += g; log(`牛市来了，股票赚了 ${f1(g)} 万。`, "warm"); }
+          else if (r < 0.6) { ev -= g; log(`熊市，股票亏了 ${f1(g)} 万。`, "bad"); }
+        } else if (S.money > 0 && S.inv === "p2p") {
+          if (R() < 0.03) { const l = S.money * 0.2; ev -= l; S.inv = ""; S.joy -= 8; log(`P2P 平台暴雷，${f1(l)} 万血本无归。`, "bad"); }
+          else ev += S.money * 0.2 * 0.08;
+        }
+        if (R() < 0.0005) { ev += 500; S.joy += 20; log("彩票中了 500 万！", "warm"); }
+        if (S.chai && R() < 0.003) { const c = 100 + 200 * R(); S.chai = false; ev += c; S.joy += 15; log(`老家拆迁，分到 ${Math.round(c)} 万补偿款。`, "warm"); }
+        if (a > 40 && R() < 0.01) {
+          const c = 10 + 20 * R(), own = c * (S.urban ? 0.4 : 0.6) * (S.fam0 >= 5 ? 0.3 : 1), fh = potUse(own * (S.src === "pro" ? Math.max(0.85, MEDC[S.fam0]) : MEDC[S.fam0])); ev -= own - fh; S.hp -= 20 - S.Rf / 50 - (S.src === "pro" ? 4 : 0); // 专业人士家庭：找对医生、少走弯路 S.tags.add("ill"); // 家人照料，恢复快一点；家底厚的，家里替你出一部分
+          log(`查出大病，花了 ${f1(c)} 万，医保报销后自付 ${f1(own)} 万${fh >= 0.5 ? `，家里替你出了 ${f1(fh)} 万` : ""}。`, "bad");
+        }
+        S.dy = inc - expense() - mort + ev; S.money += S.dy;
+        // 兜底：钱上出了大窟窿，家底厚的家里会接住（五年一次）；创业失败的第一次，有钱人家几乎一定兜底
+        if (S.money < -15 && S.famPot > 2 && !(S.rescCd > a) && R() < (S.sit === "boss" && !S.bailed ? Math.min(1, rescP() * 1.3) : rescP())) {
+          const h = potUse(Math.min(-S.money, S.famPot * 0.4));
+          if (h >= 1) {
+            S.money += h; S.dy += h; S.rescCd = a + 5;
+            if (S.sit === "boss" && !S.bailed) { S.bailed = 1; log(S.fam0 >= 5 ? `公司的窟窿 ${Math.round(h)} 万，家里一句话就填上了：“交学费了，再来。”` : `创业亏空，爸妈拿出 ${f1(h)} 万帮你堵上：“就这一次。”`, "warm"); }
+            else log(`欠下的钱，爸妈拿出 ${f1(h)} 万先替你还上了。`, "warm");
+          }
+        }
+        S.peak = Math.max(S.peak, S.money); S.low = Math.min(S.low, S.money);
+        if (S.money < -20) {
+          S.tags.add("debt"); S.hp -= 2; S.joy -= 4;
+          if (!S.inDebt) { S.inDebt = 1; relAdd("Rw", -3); } // 欠债：每次陷进去，社会关系−3
+          if (!S.seen.debt) { S.seen.debt = 1; log("负债超过 20 万，夜里睡不着。", "bad"); }
+        } else S.inDebt = 0;
+        S.hp = clamp(S.hp); S.joy = clamp(S.joy);
+        // 买房时机：家里能帮首付的，存款没到 15 万也会早早被催着看房
+        const aid = S.famPot > 0.5 ? Math.min(S.famPot * 0.5, 100) * HELP_P[S.fam] : 0;
+        if (!S.house && !S.askH && a >= (aid >= 15 ? 24 : 26) && a <= 35 && S.money + aid >= 15) { S.askH = 1; q.push(chooseHouse); }
+        if (!S.askI && a >= 28 && S.money >= 10) { S.askI = 1; q.push(chooseInvest); }
+      }
+      function chooseJob() {
+        modal(`${S.age} 岁 · 失业之后`, "存款 " + f1(S.money) + " 万，日子还得过。", [
+          ["降薪再就业", "收入打七折 · 同事圈子广，可能少降一些", () => { if (R() < 0.6 * (0.6 + S.Rw / 100) * (0.7 + 0.06 * tk())) { S.cut *= 0.85; S.joy -= 2; log("老同事帮忙引荐，降薪不多就再就业了。", "warm"); } else { S.cut *= 0.7; S.joy -= 4; log("降薪再就业，从头再来。"); } }],
+          ["送外卖、跑网约车", "来钱快，风里雨里", () => { S.sit = "work"; S.dlv = 1; S.lvl = 0.6; S.cut = 1; S.hp -= 4; log("送起了外卖，晚上跑网约车。"); }],
+          ["回老家", "花销小，收入也小", () => { S.sit = S.urban ? "work" : "farm"; S.dlv = 0; S.loc = S.urban ? "county" : "rural"; S.lvl = R() * 0.5; S.cut = 1; S.joy += 6; log("回了老家，重新开始。"); }],
+          // 啃老：家底越厚越可能有这条退路
+          S.age < 45 && S.famPot > 3 && R() < KEN[S.fam0] && ["回家啃老一年", "爸妈养着 · 面子挂不住 · 之后托关系再就业", () => {
+            const c = potUse(Math.min(S.famPot * 0.3, expense() + (S.house ? S.house.pay : 0))); S.money += c; S.dlv = 0; S.cut = 1; S.joy -= 2; relAdd("Rf", -2);
+            S.lvl = Math.min(1, S.lvl * 0.8 + NETP[S.fam0] * 0.1);
+            log(S.fam0 >= 5 ? `在家歇了一年，爸妈替你付了 ${f1(c)} 万的开销，又托朋友给你安排了新位置。` : `搬回家住了一年，爸妈贴了 ${f1(c)} 万，饭桌上没人提工作的事。后来托亲戚找了份新工作。`);
+          }],
+        ].filter(Boolean));
+      }
+      function buy(P, t) {
+        S.money -= P * 0.3; S.house = { P, pay: P * 0.065, left: 30 }; S.joy += 6;
+        // 首付父母资助：概率与份额按家境（出身档位 + 现在的家底）
+        if (S.famPot > 0.5 && R() < HELP_P[S.fam]) {
+          const h = potUse(P * 0.3 * HELP_F[S.fam] * (0.7 + 0.6 * R()));
+          if (h >= 0.5) { S.money += h; t += S.fam >= 5 ? `首付家里直接出了 ${Math.round(h)} 万。` : `爸妈拿出 ${f1(h)} 万帮你凑首付。`; }
+        }
+        if (S.money >= 0) return log(t);
+        // 首付不够：家人朋友越亲，越借得到
+        if (STORY.borrowOK(S)) log(t + "首付不够，向亲戚借了钱。");
+        else { S.money -= 3; log(t + "亲戚手头都紧，没借到，只好办了高息贷款。", "bad"); }
+      }
+      function chooseHouse() {
+        // 北京、上海本地：房价天花板，城区一套是别处的两三倍，郊区“县城”也要 150 万
+        const hm = pf("house"), P = S.loc === "big" ? (hm > 1 ? 650 : 300) : S.loc === "county" ? 50 * (hm > 1 ? 3 : 1) : 120 * hm, nm = S.loc === "big" ? "大城市" : S.loc === "county" ? (hm > 1 ? "远郊" : "县城") : hm > 1 ? "城区" : "省会";
+        modal(`${S.age} 岁 · 买房`, `存款 ${f1(S.money)} 万 · ${nm}房价约 ${P} 万${hm > 1 ? ` · ${S.p.n}的房价，全国最难够得着` : ""}`, [
+          ["买", `首付三成 ${P * 0.3} 万，30 年房贷，每年还 ${f1(P * 0.065)} 万`, () => buy(P, `在${nm}买了房，背上 30 年房贷。`)],
+          ["继续租", S.loc === "big" ? "每年房租 2.4 万" : "手里留着现金", () => log("决定继续租房。")],
+          ["回县城买", "房价约 50 万，首付 15 万，每年还 3.3 万", () => { if (S.sit === "farm" || (S.sit === "white" && S.loc === "big")) S.sit = "work"; S.loc = "county"; buy(50, "回县城买了房。"); }],
+        ]);
+      }
+      function chooseInvest() {
+        modal(`${S.age} 岁 · 闲钱怎么放`, `存款 ${f1(S.money)} 万`, [
+          ["炒股", "两成存款进股市，牛熊各 ±25%", () => { S.inv = "stock"; log("开了股票账户。"); }],
+          ["买 P2P 理财", "年化 8%，偶尔暴雷", () => { S.inv = "p2p"; log("把两成存款放进了 P2P。"); }],
+          ["存银行", "稳稳当当", () => log("钱都存在银行。")],
+        ]);
+      }
+      // 半点累计，避免取整吞掉小数；up() 让正向增益走同一套边际递减
+      function add(k, v) { const r = k + "r"; S[r] = (S[r] || 0) + v; const w = Math.trunc(S[r]); S[r] -= w; S[k] = clamp(S[k] + w); }
+      const up = (k, v) => add(k, STORY.gain(k, v, S[k]));
+      const FAMF = (f) => f === "家人朋友" || f === "陪老伴";
+      // 离乡：一生只算一次，老朋友圈子散了
+      function leave() { if (!S.seen.away) { S.seen.away = 1; relAdd("Rp", -10); log("离开家乡，和老朋友慢慢断了联系。"); } }
+      // 人情 = 家人 Rf + 朋友 Rp + 同事社会 Rw 加权；三圈存小数，显示取整
+      const RBASE = { Rf: 55, Rp: 45, Rw: 40 }, SOC_F = 1.5, SOC_P = 1.8, SOC_W = 0.8;
+      function relW(a) {
+        if (a < 18) return [0.6, 0.4, 0];
+        if (a >= 60) return [0.5, 0.4, 0.1];
+        return S.jobNow ? [0.35, 0.35, 0.3] : [0.5, 0.5, 0]; // 没工作的年份：同事那份平分给家人和朋友
+      }
+      function relSync() { const [wf, wp, ww] = relW(S.age); S.rel = clamp(wf * S.Rf + wp * S.Rp + ww * S.Rw); }
+      // 正向增益越高越难涨：× max(0.15, (100 − 当前)/60)
+      const gainR = (k, v) => (v > 0 ? v * Math.max(0.15, (100 - S[k]) / 60) : v);
+      function relAdd(k, v) {
+        if (!v || (k === "Rw" && !S.hasJob)) return;
+        S[k] = Math.max(0, Math.min(100, S[k] + gainR(k, v))); relSync();
+      }
+      const inSchool = (a) => a >= 6 && (a <= 15 || (a <= 18 && (S.track === "high" || S.track === "voc")) || student());
+      // 人情与丧亲：每年在故事和钱之后结算
+      function grow(a, f, x) {
+        const t = S.tags, job = a >= 16 && a < 60 && !student() && (a >= 18 || S.track === "work");
+        if (job && !S.hasJob) { S.hasJob = 1; S.Rw = 35; }
+        S.jobNow = job && !t.has("layoff");
+        // 回落到基线 7%/年；退休后同事圈每年 ×0.75，失业减半
+        S.Rf += (RBASE.Rf - S.Rf) * 0.07; S.Rp += (RBASE.Rp - S.Rp) * 0.07;
+        if (S.hasJob) S.Rw = a >= 60 ? S.Rw * 0.75 : S.Rw + (RBASE.Rw - S.Rw) * 0.07;
+        if (t.has("layoff")) S.Rw *= 0.5;
+        // 天生合群程度 + 重心
+        relAdd("Rf", SOC_F * S.soc); relAdd("Rp", SOC_P * S.soc); relAdd("Rw", SOC_W * S.soc);
+        relAdd("Rf", x.Rf); relAdd("Rp", x.Rp); relAdd("Rw", x.Rw);
+        // 家人：常年在外
+        if (a >= 18 && a < 60 && (S.loc === "big" || (S.seen.away && S.loc === "prov"))) {
+          relAdd("Rf", -1);
+          if (!S.seen.farR) { S.seen.farR = 1; log("常年在外，和家里的电话越来越短。"); }
+        }
+        // 朋友：毕业、带娃、年老、太卷
+        const sch = inSchool(a);
+        if (S.wasSch && !sch) { relAdd("Rp", -8); log("毕业了，同学们各奔东西。"); }
+        S.wasSch = sch;
+        if (S.wed && S.kids.length && a - S.kids[0] < 5) relAdd("Rp", -0.8);
+        if (a >= 70) relAdd("Rp", -1);
+        if (S.juan >= 4) { relAdd("Rp", -1); if (!S.seen.juanR) { S.seen.juanR = 1; log("忙得顾不上朋友，聚会一推再推。"); } }
+        // 丧亲之痛 G：每年 ×0.65，朋友多、陪家人时消得更快
+        if (S.G) { S.G *= 0.65 * (S.Rp >= 55 ? 0.75 : 1) * (FAMF(f) ? 0.8 : 1); if (S.G < 0.5) S.G = 0; }
+        if (S.loss) {
+          const care = S.F.caredParent || S.F.momCare;
+          const base = { 祖辈: S.F.lb ? 20 : 8, 父亲: care ? 18 : 15, 母亲: care ? 18 : 15, 配偶: 25, 子女: 35 }[S.loss] || 15;
+          S.G = (S.G || 0) + base * (0.6 + S.Rf / 100);
+          relSync();
+          if (S.rel >= 60) log("老同学们轮流来看你。", "warm");
+          else if (S.rel < 30) { S.joy = clamp(S.joy - 5); log("葬礼上来的人不多。", "bad"); }
+        }
+        if (S.G > 5) { S.joy = clamp(S.joy - 0.6 * S.G); add("hp", -0.1 * S.G); }
+        // 抑郁：悲痛深、身边人少
+        if (S.G > 15 && S.rel < 30 && !(S.depUntil > a) && R() < 0.25) {
+          S.depUntil = a + 2; S.dep = (S.dep || 0) + 1;
+          log(S.soft ? "这一年，心里很沉。" : "你整夜睡不着，白天什么都提不起劲。医生说，这可能是抑郁。全国心理援助热线 12356。", "bad");
+          Q.push(() => modal(`${a} 岁 · 心里的雾`, S.soft ? "要不要找人帮帮忙？" : "幸福最多到 40，要持续两年。", [
+            ["去看医生", "低落的时间缩短一半", () => { S.depUntil = S.age + 1; log(S.soft ? "你去看了医生。" : "你去了医院，开始按时吃药、每周复诊。", "warm"); }],
+            ["自己扛着", "幸福上限 40，持续两年", () => log("你告诉自己，熬一熬就过去了。")],
+          ]));
+        }
+        // 心情差：三个圈子都变淡，除非老朋友来电
+        const md = moodOf();
+        if (md === "沮丧" || md === "悲伤") {
+          if (S.Rp >= 55 && R() < 0.4) { S.joy = clamp(S.joy + 3); log("老朋友突然打来电话，说就想听听你的声音。", "warm"); }
+          else { S.Rf = Math.max(0, S.Rf - 1); S.Rp = Math.max(0, S.Rp - 1); if (S.hasJob) S.Rw = Math.max(0, S.Rw - 1); }
+        }
+        ["Rf", "Rp", "Rw"].forEach((k) => (S[k] = Math.max(0, Math.min(100, S[k]))));
+        relSync();
+        if (S.rel < 30) { S.joy = clamp(S.joy - 2); add("hp", -0.5); }
+        if (S.depUntil > a) S.joy = Math.min(S.joy, 40);
+      }
+      // 知识 = 底子 Kb（上学攒下的）+ 活知识 Ka（在用、在学的）；S.iq = 0.45·Kb + 0.55·Ka
+      const AGEL = (a) => (a <= 12 ? 1.2 : a <= 18 ? 1.1 : a <= 25 ? 1 : a <= 40 ? 0.85 : a <= 55 ? 0.7 : a <= 70 ? 0.55 : 0.4);
+      const MOODL = { 温馨: 1.1, 浪漫: 1, 平淡: 1, 沮丧: 0.7, 悲伤: 0.5 };
+      const STUDY = (f) => f === "学习" || f === "自我提升" || f === "老年大学";
+      function gainK(part, base) {
+        if (!(base > 0)) return base || 0;
+        const fl = S.apt >= 1.15 ? 0.35 : 0.15;
+        // 丧亲之痛 G>5 时心情系数取 0.5（只算一次）
+        return base * Math.pow(S.apt, 4.5) * AGEL(S.age) * (S.G > 5 ? 0.5 : MOODL[moodOf()] || 1) * (S.hp < 40 ? 0.7 : 1) * Math.max(fl, (100 - S[part]) / 70);
+      }
+      function kSync() { S.iq = Math.round(0.45 * S.Kb + 0.55 * S.Ka); }
+      // 小数部分直接留在 Kb/Ka 里，不会被取整吞掉
+      function kAdd(part, v) { S[part] = Math.max(0, Math.min(100, S[part] + v)); if (part === "Kb") S.KbPeak = Math.max(S.KbPeak, S.Kb); kSync(); }
+      const kUp = (part, base) => kAdd(part, gainK(part, base));
+      // 故事里的知识：正向走边际递减（上学年纪进底子），负向直接扣活知识
+      const kfx = (v) => (v > 0 ? kUp(S.age < 23 ? "Kb" : "Ka", v) : kAdd("Ka", v));
+      function brainU(a) {
+        if (a < 18 || a >= 60 || student() || S.tags.has("layoff")) return 0;
+        return { boss: 0.7, white: 0.6, gov: 0.4, work: S.dlv ? 0.1 : 0.2, farm: 0.15 }[S.sit] || 0;
+      }
+      function know(a, f) {
+        const t = S.tags, key = S.school === "key" ? 1.2 : 1;
+        // 上学：七成进底子，三成进活知识
+        let sc = 0;
+        if (a >= 6 && a <= 12) sc = 2;
+        else if (a >= 13 && a <= 15) sc = 2 * key;
+        else if (a >= 16 && a <= 18) sc = S.track === "high" ? 3 * key : S.track === "voc" ? 2 : 0;
+        else if (a >= 19 && a <= 22 && student() && S.edu > 1 && !(S.uni === "专科" && a > 21)) sc = 3.5 * (S.uni === "C9" || S.uni === "985" ? 1.3 : S.uni === "专科" ? 0.8 : 1);
+        // 家庭的底子系数（18 岁前）：困难 0.9 … 高知 1.15
+        if (sc && a <= 18) sc *= Math.max(S.parEdu === 3 ? 1.15 : 0, KNOWB[S.fam]) * pf("iq");
+        if (sc) { kUp("Kb", sc * 0.7 * 1.3); kUp("Ka", sc * 0.3); }
+        // 毕业那年的底子加成：名校底子更厚；职校没有底子加成，但多一门手艺（活知识）
+        const KB0 = { C9: 8, "985": 6, "211": 4, 普通本科: 2 };
+        if (a === 22 && S.track === "high" && KB0[S.uni]) kAdd("Kb", KB0[S.uni]);
+        if (a === 18 && S.track === "voc") kAdd("Ka", 3);
+        // 重心
+        if (f === "兴趣") { S.hobbyY = (S.hobbyY || 0) + 1; if (a <= 17 && S.hobbyY >= 3) S.reader = 1; }
+        if (f === "老年大学") S.oldUni = 1;
+        if (f === "自我提升") S.selfUp = a;
+        const fk = { 学习: 4, 自我提升: 4, 老年大学: 3, 兴趣: 1, 均衡: 0.5, 帮家里: -1 }[f] || 0;
+        // 上学年纪的“学习”一半进底子（和课堂同属学校的事）
+        if (f === "学习" && a < 18) { kUp("Kb", fk / 2); kUp("Ka", fk / 2); }
+        else fk > 0 ? kUp("Ka", fk) : fk < 0 && kAdd("Ka", fk);
+        if (S.reader) kUp("Ka", 0.5);
+        // 工作用脑
+        const u = brainU(a);
+        if (u) kUp("Ka", u);
+        // 遗忘：只忘活知识；底子成年后慢慢褪，但不低于巅峰的六成
+        const fb = a < 25 ? 0 : a <= 35 ? 0.5 : a <= 50 ? 1 : a <= 65 ? 1.5 : 2.2;
+        // 剩得越少忘得越慢（Ka 50 以下按比例减缓），晚年不会一下忘光
+        if (fb) kAdd("Ka", -fb * Math.max(0, 1 - u - (STUDY(f) ? 0.5 : 0)) * Math.min(1, S.Ka / 50));
+        if (a >= 23) { S.Kb = Math.max(0.6 * S.KbPeak, S.Kb - (0.1 + 0.2 * R())); kSync(); }
+        // 冲击
+        if (S.sit === "white" && a >= 35 && a < 60 && !t.has("layoff")) {
+          const p = 0.06 * (S.selfUp === a ? 0.3 : S.selfUp != null && a - S.selfUp <= 3 ? 1 : 2);
+          if (R() < p) { kAdd("Ka", -(8 + 7 * R())); log("新来的实习生用 AI 十分钟做完你一天的活。", "bad"); }
+        }
+        if (S.kids.some((k) => a - k >= 10 && a - k <= 15)) {
+          if (R() < 0.25 * (1 - S.Kb / 100) * 1.5) { kAdd("Ka", -3); S.joy = clamp(S.joy - 2); log("孩子的一道数学题，你看了二十分钟。", "bad"); }
+          else if (S.Kb >= 70 && R() < 0.15) { relAdd("Rf", 2); log("你给孩子讲明白了那道题。", "warm"); }
+        }
+        if (t.has("ill")) kAdd("Ka", -2);
+        if (S.loss) kAdd("Ka", -(1 + 2 * R()));
+        if (a === 65 && !S.oldUni && R() < 0.3) { kAdd("Ka", -4); log("挂号要扫码，你在医院门口站了半小时。", "bad"); }
+        if (a >= 75) {
+          if (S.cog) kAdd("Ka", -3);
+          if (R() < 0.03 * (S.hp < 50 ? 2 : 1) * (S.iq < 40 ? 1.5 : 1) * (S.rel < 30 ? 2 : 1)) {
+            S.cog = (S.cog || 0) + 1;
+            if (S.cog === 1) log("你开始记不住刚说过的话，钥匙一天要找三回。", "bad");
+            else if (S.cog === 3) { S.tags.add("ill"); log("医生看了片子，说是阿尔茨海默病。你点点头，转身又问了一遍医生姓什么。", "bad"); }
+          }
+        }
+        kSync();
+      }
+      const tr3 = () => (S.track === "high" ? 3 : S.track === "voc" ? 1.5 : 0);
+      // 家庭背景带来的年度事件：都只是概率
+      function famYear(a) {
+        const t = S.fam;
+        // 家道中落：做生意的家庭每十年约 5%；第 5 级及以上掉两级，第 2–4 级掉一级
+        if (S.biz && a < 60 && t >= 1 && R() < 0.005) {
+          S.fam = t >= 4 ? t - 2 : t - 1; S.dec = decOf(S.fam); S.famPot *= 0.35; S.joy = clamp(S.joy - 8); S.tags.add("sad");
+          if (S.heir) S.cut *= 0.5;
+          log(`家里的生意出了大窟窿，${a < 18 ? "爸妈卖了车，搬进了小一点的房子" : S.heir ? "你接手的厂子一夜之间背上了债" : "父母一夜之间背上了债"}。家境从「${famLabel(S, t)}」掉到了「${famLabel(S)}」。`, "bad");
+        }
+        // 高知家庭鸡娃：知识+ 幸福−
+        if (S.parEdu === 3 && a >= 6 && a <= 15 && !(S.jwCd > a) && R() < 0.3) {
+          S.jwCd = a + 3; S.joy = clamp(S.joy - 4); kUp("Kb", 2);
+          log(rnd(["周末排满了奥数、英语和钢琴，你在去补习班的车上睡着了。", "爸妈拿着别人家孩子的竞赛证书，一页页翻给你看。", "期末考了第三名，妈妈问：“第一名是谁？”"]), "bad");
+        }
+        // 困难、拮据家庭懂事早：家人+ 幸福−
+        if (t <= 1 && a >= 8 && a <= 16 && !(S.dsCd > a) && R() < [0.3, 0.08][t]) {
+          S.dsCd = a + 4; relAdd("Rf", 3); S.joy = clamp(S.joy - 3);
+          log(rnd(["放学先去菜市场捡剩菜叶，再回家写作业。", "春游要交五十块，你没跟家里说，那天说自己肚子疼。", "你学会了做饭，踩着小板凳给下地回来的爸妈热饭。", "新鞋穿到第三年，脚趾顶破了也没说。"]));
+        }
+        // 补课：家里出钱请一对一、报辅导班（底子+）
+        if (a >= 8 && a <= 17 && S.track !== "work" && !(S.tuCd > a) && R() < TUTOR[t]) {
+          S.tuCd = a + 3; kUp("Kb", t >= 3 ? 2 : 1.5); S.famPot = Math.max(0, S.famPot - (t >= 5 ? 5 : t >= 3 ? 2 : 0.6));
+          if (!S.seen.tutor) { S.seen.tutor = 1; log(t >= 5 ? "家里请了名校出身的家教，每周三次一对一。" : t >= 3 ? "爸妈给你报了两个辅导班，周末排得满满的，一节课好几百。" : "爸妈咬牙给你报了一个暑假辅导班。"); }
+        }
+        // 困难、拮据家庭的窟窿：修房、看病、欠账，隔几年就来一次（18–50 岁）
+        if (S.fam0 <= 1 && a >= 18 && a <= 50 && !(S.crCd > a) && R() < [0.07, 0.012][S.fam0]) {
+          const c = 1 + 2 * R(); S.money -= c; S.crCd = a + 3; S.joy = clamp(S.joy - 2);
+          log(rnd([`老家的房子漏雨塌了半面墙，你寄回去 ${f1(c)} 万。`, `爸爸干活摔伤了腿，没有保险，医药费你出了 ${f1(c)} 万。`, `家里早年欠的账有人上门来要，你替爸妈还了 ${f1(c)} 万。`]), "bad");
+        }
+        // 早早打工的压力：第 1–2 级家庭读高中 / 职校时，家里可能供不起
+        if (t <= 1 && (a === 16 || a === 17) && (S.track === "high" || S.track === "voc") && !S.seen.dropAsk && R() < DROP[t]) {
+          S.seen.dropAsk = 1;
+          Q.push(() => modal(`${a} 岁 · 家里的难处`, t === 0 ? "爸爸在工地上伤了腰，家里断了收入。妈妈在灶台前叹气：“要不……你先出去挣两年？”" : "弟弟妹妹也要上学，家里的钱实在转不开了。", [
+            ["退学打工", "早点挣钱养家 · 学历停在初中", () => { S.track = "work"; S.edu = 0.85; S.tierK = 0; S.school = ""; S.loc = "prov"; S.joy -= 6; relAdd("Rf", 3); leave(); goOut(); log(S.migr ? "你把课本留给了表弟，跟着老乡去了南方的电子厂。" : "你把课本留给了表弟，进了城边的电子厂。"); }],
+            ["咬牙读下去", "幸福− 健康− · 寒暑假都去打零工", () => { S.joy -= 6; S.hp -= 3; kAdd("Kb", -2); log("你白天上课，周末去饭馆洗碗，学费总算一点点凑齐了。"); }],
+          ]));
+        }
+        // 赡养：困难、偏下家庭的父母没什么积蓄，每月要往家里寄钱
+        if (S.fam0 <= 1 && a >= 30 && a < 60 && !S.inh && R() < [0.55, 0.21][S.fam0]) {
+          const c = 0.6 + 0.9 * R(); S.money -= c;
+          if (!S.seen.supp) { S.seen.supp = 1; log("爸妈没有退休金，你每个月往家里寄钱，一年下来一万多。"); }
+        }
+        // 家里给房：婚房或投资房，租金归你
+        if (GIFT_P[S.fam0] && a >= 25 && a <= 34 && !S.famProp && S.famPot > 30 && R() < 1 - Math.pow(1 - GIFT_P[S.fam0], 0.1)) {
+          const v = Math.min(S.famPot * 0.6, GIFT_V[S.fam0] * (0.7 + 0.6 * R())); S.famPot -= v; S.famProp = v;
+          log(S.fam0 >= 5 ? `家里在市中心给你全款买了一套房，约 ${Math.round(v)} 万，租出去，租金归你。` : `爸妈拿出大半辈子的积蓄，给你全款买了一套约 ${Math.round(v)} 万的小房子，先租出去。`, "warm");
+        }
+        // 富二代挥霍
+        if (t >= 5 && a >= 18 && a <= 30 && !S.seen.splurge && R() < 0.12) {
+          S.seen.splurge = 1;
+          Q.push(() => modal(`${a} 岁 · 富二代的圈子`, "朋友约你去澳门玩几天，顺便看看新出的跑车。", [
+            ["去，人生得意须尽欢", "幸福+ 健康− · 钱会花得很快", () => { const l = 20 + 0.4 * Math.max(0, S.money); S.money -= l; S.joy += 8; S.hp -= 3; log(`跑车、夜店、包机，一年花掉 ${Math.round(l)} 万。`, "bad"); }],
+            ["收心，做点正事", "知识+ · 那群朋友会疏远", () => { kUp("Ka", 3); relAdd("Rp", -3); log("你推掉了邀约，把那周拿来读完了一摞行业报告。"); }],
+          ]));
+        }
+        srcYear(a, t);
+      }
+      // ===== 家底来源与顶层的人生质感（D8 及以上）=====
+      const HEIR_M = [0.1, 0.15, 0.25, 0.4, 0.6, 0.8, 1];
+      function fallFam(why) {
+        const t = S.fam; if (t < 1) return;
+        S.fam = t >= 4 ? t - 2 : t - 1; S.dec = decOf(S.fam); S.famPot *= 0.35; S.joy = clamp(S.joy - 8); S.tags.add("sad");
+        if (S.heir) S.cut *= 0.5;
+        log(`${why}家境从「${famLabel(S, t)}」掉到了「${famLabel(S)}」。`, "bad");
+      }
+      function srcYear(a, t) {
+        const s = S.src, g = S.srcG, adult = a >= 18 && !student();
+        if (!s && S.fam0 < 3) return;
+        // 企业主：生意有周期，扩张、债务危机，危机里有四分之一会家道中落
+        if (s === "biz" && S.biz && a < 65 && !(S.bcCd > a) && S.fam >= S.fam0 - 1 && R() < 0.05) {
+          S.bcCd = a + 4; const what = S.srcSub.replace(/^.*·/, "");
+          if (R() < 0.6) { S.famPot *= 1.5; if (S.heir) S.cut *= 1.15; log(rnd([`家里的${what}又开了一家分店，爸爸请全家吃了顿大餐。`, `家里的${what}接了个大单，扩了一倍的人。`, `家里的${what}拿到了一笔融资，爸妈的朋友圈里全是剪彩照片。`]), "warm"); }
+          else if (R() < 0.9) { S.famPot *= 0.65; S.joy = clamp(S.joy - 4); if (S.heir) S.cut *= 0.85; log(rnd(["下游客户拖款半年，家里的生意资金链绷得很紧，爸爸抵押了房子。", "银行抽贷，家里的厂子差点发不出工资。", "一笔担保出了事，爸妈替别人背了一身债。"]), "bad"); }
+          else fallFam(rnd(["债务危机没扛过去，厂子停产、房子查封。", "生意的窟窿越补越大，最后宣告破产。"]));
+        }
+        // 职业投资：家里的钱跟着行情大起大落
+        if (s === "inv" && a < 70 && !(S.ivCd > a) && R() < 0.08) {
+          S.ivCd = a + 3;
+          if (R() < 0.5) { S.famPot *= 1.5; log(rnd(["牛市里爸爸重仓的股票翻了倍，家里换了车。", "家里早年买的几套房涨了一倍。"]), "warm"); }
+          else if (R() < 0.9) { S.famPot *= 0.55; S.joy = clamp(S.joy - 3); log(rnd(["股灾，爸爸加了杠杆，家里的钱一个月缩水一半。", "房价下跌，家里的几套房怎么也卖不掉。"]), "bad"); }
+          else fallFam("爸爸爆仓了，家里多年的积蓄一夜清零。");
+        }
+        // 房二代：拆迁暴富、婚房现成、容易躺平
+        if (s === "fang") {
+          if (!S.seen.cq && a >= 3 && a <= 50 && R() < 0.01) {
+            S.seen.cq = 1; const v = [100, 150, 300, 500, 800, 1500, 3000][g] * (0.6 + 0.8 * R());
+            if (adult) { S.money += v * 0.4; S.famPot += v * 0.6; } else S.famPot += v;
+            S.joy = clamp(S.joy + 10); log(`家里的楼划进了拆迁范围，补偿款加安置房约 ${Math.round(v)} 万。${adult ? `爸妈分给你 ${Math.round(v * 0.4)} 万。` : "爸妈说，这是给你攒的。"}`, "big");
+          }
+          if (!S.house && !S.seen.fh && a >= 22 && a <= 30 && R() < 0.35) {
+            S.seen.fh = 1; S.askH = 1; const P = [80, 120, 200, 300, 500, 800, 1500][g] * (0.8 + 0.4 * R());
+            S.house = { P, pay: 0, left: 0 }; S.famPot = Math.max(0, S.famPot - P * 0.3);
+            log(`爸妈把家里一套约 ${Math.round(P)} 万的房子过户给你：“以后结婚就住这儿。”`, "warm");
+          }
+          if (adult && a >= 22 && a <= 35 && !S.seen.tp && S.sit !== "boss" && R() < 0.08) {
+            S.seen.tp = 1;
+            Q.push(() => modal(`${a} 岁 · 收租也够花`, `家里每年的房租分你约 ${f1(S.rent)} 万，上班的钱还不如房租。`, [
+              ["躺平", "收入−40% · 幸福+ · 斗志会慢慢没了", () => { S.cut *= 0.6; S.joy += 8; S.lvl *= 0.8; log("你辞了工作，每天睡到中午，下午去收租、喝茶。"); }],
+              ["接着上班", "房租当零花 · 人生自己挣", () => { kUp("Ka", 2); log("你还是每天去上班：“总不能一辈子靠爸妈的楼。”"); }],
+            ]));
+          }
+        }
+        // 高管家庭：国际学校、鸡娃、大厂实习
+        if (a === 6 && (s === "exec" && g >= 1 || s === "biz" && g >= 3 || t >= 5) && R() < (s === "exec" ? 0.55 : 0.3)) {
+          S.intl = 1; S.famPot = Math.max(0, S.famPot - (t >= 5 ? 30 : 15)); kUp("Ka", 2);
+          log(rnd(["你上了一所国际学校，一年学费二十多万，同学的爸妈不是高管就是老板。", "你进了双语国际学校，三年级就开始上 AP 预备课。"]));
+        }
+        if (s === "exec" && S.parEdu !== 3 && a >= 6 && a <= 15 && !(S.jwCd > a) && R() < 0.3) {
+          S.jwCd = a + 3; S.joy = clamp(S.joy - 4); kUp("Kb", 2);
+          log(rnd(["妈妈的日程表比公司的还满：周一英语、周三编程、周六马术。", "爸爸在饭桌上问你的“年度目标”，像在开季度会。", "同学都在考 KET、PET，妈妈给你报了三个班。"]), "bad");
+        }
+        if (s === "exec" && a === 21 && S.track === "high" && !S.seen.intern) {
+          S.seen.intern = 1; S.lvl = Math.min(1, S.lvl + 0.08); relAdd("Rp", 2);
+          log(rnd(["爸爸的老同事帮你安排了一份投行的暑期实习。", "妈妈推了一份外企的实习内推，简历上多了一行亮眼的经历。"]), "warm");
+        }
+        // 干部家庭：单位里都认识你爸
+        if (s === "cadre" && a === 24 && !S.seen.cadreRw) { S.seen.cadreRw = 1; relAdd("Rw", 5); log("单位里不少叔叔阿姨认识你爸，饭局上总有人照应你。", "warm"); }
+        // 专业人士家庭：学习底子
+        if (s === "pro" && a >= 8 && a <= 16 && !(S.proCd > a) && R() < 0.25) { S.proCd = a + 4; kUp("Kb", 1.5); log(rnd(["爸爸书房里的书，你一本本翻过去。", "妈妈带你去医院实验室参观，你第一次看见显微镜下的细胞。", "饭桌上的辩论，你从小就插得上嘴。"])); }
+        // —— 顶层的稀有经历 ——
+        const top = S.top;
+        // 出国读硕士（毕业那年）
+        if (a === 22 && S.track === "high" && tk() >= 3 && !S.abroad && !S.ky && (S.fam >= 4 || (S.fam === 3 && g === 2)) && R() < [0.08, 0.18, 0.3, 0.35, 0.45][Math.min(4, Math.max(0, top) + (s === "exec" ? 1 : 0))]) {
+          const c = potUse(t >= 5 ? 80 : 50); S.ky = 1; S.tierK = Math.min(7, (S.tierK || 0) + 1); S.edu = Math.max(S.edu, 1.6); S.abroadM = 1; leave();
+          log(`家里出了约 ${Math.round(c)} 万，送你去${rnd(["伦敦", "香港", "新加坡", "纽约"])}读了一年硕士。`, "big");
+        }
+        // 家族信托：第 6 级及以上，一部分家底锁进信托，每年分红，家道中落也动不了
+        if (t >= 5 && a >= 25 && a <= 50 && !S.trust && R() < 0.03 * Math.min(4, t - 4)) {
+          const v = Math.min(S.famPot * 0.3, [300, 1000, 5000, 20000, 50000][t - 5]); S.famPot -= v; S.trust = v * 0.04;
+          log(`爸妈请律师设了家族信托，你每年能领约 ${Math.round(S.trust)} 万分红，不管家里生意怎样。`, "big");
+        }
+        // 联姻相亲
+        if (t >= 5 && a >= 24 && a <= 32 && !S.wed && !S.seen.ly && R() < 0.06) {
+          S.seen.ly = 1; const who = rnd(["做地产的", "开上市公司的", "做外贸起家的", "家里有矿的"]);
+          Q.push(() => modal(`${a} 岁 · 门当户对`, `妈妈安排了一顿饭，对方家里是${who}，“两家知根知底。”`, [
+            ["去见见", "家人+ · 未必有感情", () => { relAdd("Rf", 3); S.joy -= 2; log(rnd(["饭吃得很客气，双方父母聊得比你们俩多。后来没了下文。", "你们加了微信，聊了几次股票和高尔夫，然后都不说话了。"])); }],
+            ["不去", "家人− · 自己的人自己找", () => { relAdd("Rf", -3); S.joy += 2; log("你说不想被安排。妈妈在电话里叹了好长一口气。"); }],
+          ]));
+        }
+        // 被骗投资：有钱人更容易被盯上
+        if ((S.fam0 >= 4 || (S.fam0 === 3 && g === 2)) && adult && a >= 28 && a <= 65 && !S.seen.scamI && R() < 0.012 * (1 + top)) {
+          S.seen.scamI = 1; const l = Math.max(5, 0.3 * Math.max(0, S.money) + 0.1 * (S.famCap || 0)); S.money -= l; S.joy = clamp(S.joy - 8);
+          log(rnd([`朋友拉你投了一个“稳赚”的私募项目，${Math.round(l)} 万打了水漂，老板跑路了。`, `一个饭局上认识的“大师”带你投区块链，${Math.round(l)} 万再也没回来。`]), "bad");
+        }
+        // 企业主：接班 / 自己闯 / 卖掉（22–28 岁，生意还在）
+        if (s === "biz" && !S.heir && !S.seen.heirAsk && a >= 23 && a <= 28 && S.fam >= S.fam0 - 1 && R() < 0.25) {
+          S.seen.heirAsk = 1; const what = S.srcSub.replace(/^.*·/, ""), big = g >= 2;
+          Q.push(() => modal(`${a} 岁 · 家里的${what}`, big ? `父亲把你叫进书房：“${what}做了三十年，总要有人接。”` : `爸爸腰不好了：“这摊生意，你接不接？”`, [
+            ["接班", big ? "年入几十万到上百万 · 很累 · 人生和企业绑在一起" : "收入跟着生意走 · 起早贪黑", () => { S.heir = 1; S.heirM = HEIR_M[g]; S.sit = "white"; S.loc = "prov"; S.cut = 1; S.dlv = 0; S.hp -= 3; S.juan = (S.juan || 0) + 1; log(big ? "你搬进了父亲隔壁的办公室。第一次在董事会上发言，手心全是汗。" : `你接下了家里的${what}，每天第一个开门、最后一个关灯。`, "big"); }],
+            ["自己闯", "家里会失望 · 你会更自在", () => { relAdd("Rf", -4); S.joy += 4; log("你说想走自己的路。父亲沉默了很久，最后说：“也好，别后悔。”"); }],
+            ["卖掉", "落袋为安 · 一大笔钱 · 家业就此结束", () => { const v = potUse(S.famPot * 0.5); S.money += v; S.famCap = (S.famCap || 0) + v; S.biz = false; relAdd("Rf", -2); log(`家里把${what}卖了，你分到 ${v >= 100 ? Math.round(v) : f1(v)} 万。爸爸签完字，一个人在车里坐了很久。`, "big"); }],
+          ]));
+        }
+      }
+      // ===== 地方特色：风物小事 + 几件看省份的事 =====
+      // 外出务工：离开本省去打工（广东、北京、上海本身就是打工目的地，在本省打工不算）
+      const goOut = () => { if (!pf("dest", 0) && !S.migr) S.migr = S.age; };
+      const OUT_TO = { 河南: "北京的工地", 四川: "东莞的电子厂", 重庆: "东莞的电子厂", 安徽: "上海的工地", 江西: "广东的鞋厂", 湖南: "深圳的工厂", 贵州: "广东的工厂", 广西: "广东的工厂", 辽宁: "深圳", 吉林: "海南和深圳", 黑龙江: "海南和深圳" };
+      const NE_T = [[6, 14, "爷爷总说起九十年代厂子“下岗”那年，说完就不吭声了。"], [16, 45, "冬天去澡堂子搓澡，出来撸串，铁签子在炭火上滋滋响。"], [22, 40, "同学群里的人一个个去了南方，老家的街上越来越冷清。"]];
+      const WEST_T = [[16, 17, "高考报名时，老师提醒你：边疆地区有加分政策，别忘了填。"], [20, 60, "这里物价不高，一碗面十来块，日子过得不紧巴。"]];
+      const COAL_T = [[8, 16, "爸爸那一辈好多人在矿上干过，说起井下就摇头。"]];
+      const PTXT = {
+        山东: [[6, 14, "过年走亲戚，磕头、坐席都有规矩，长辈不动筷子，小孩不能先吃。"], [10, 17, "学校组织去曲阜三孔研学，你在孔庙门口背了一遍《论语》。"], [24, 35, "同学群里，一半的人在晒“上岸”的公示截图。"]],
+        浙江: [[8, 16, "放学后去家里的小作坊帮忙贴标签，妈妈说这叫“从小学做生意”。"], [20, 45, "同学聚会，一半的人在谈生意：义乌的小商品、温州的鞋、直播带货的流量。"]],
+        江苏: [[12, 17, "一模、二模、三模，再加上周练，江苏的卷子做不完。"], [18, 40, "镇上的民营厂一家挨一家，做纺织的、做电机的，招工广告贴满了公交站。"]],
+        广东: [[5, 14, "周末跟着阿公阿嫲去饮早茶，一笼虾饺、一笼凤爪，一坐就是一上午。"], [8, 40, "清明回乡拜山，祠堂里摆满了宗亲，族谱上有你的名字。"], [20, 50, "妈妈又煲了一锅老火汤，在电话里叮嘱你：“饮多碗汤啊。”"]],
+        福建: [[6, 14, "祖厝里挂着下南洋的太公的照片，阿嬷说他当年是坐船去的马来亚。"], [10, 40, "元宵游神，整个宗族的人都回来了，鞭炮从早响到晚。"]],
+        河南: [[12, 17, "班主任说：“咱河南考生多，你们得比别人多考二十分。”"], [6, 14, "过年时村里的年轻人都回来了，初六一过，村口又只剩老人和孩子。"]],
+        安徽: [[6, 14, "村里的大人们大多在江浙沪打工，过年才回来几天。"]],
+        江西: [[18, 30, "同村的哥哥结婚，彩礼的数目在村里传了好几个月。"], [6, 14, "村里不少大人在广东打工，过年带回一箱箱腊肠。"]],
+        四川: [[8, 16, "楼下的茶馆里，麻将声从早响到晚。"], [18, 50, "周末和朋友去吃火锅，牛油锅底红彤彤，一顿能吃三个小时。"]],
+        重庆: [[8, 16, "楼下的茶馆里，麻将声从早响到晚。"], [18, 50, "周末和朋友去吃火锅，牛油锅底红彤彤，一顿能吃三个小时。"]],
+        湖南: [[8, 16, "外婆做的剁椒鱼头，一辣辣到耳朵根。"]],
+        辽宁: NE_T, 吉林: NE_T, 黑龙江: NE_T,
+        北京: [[16, 17, "你听说同样的分数，在北京能上的大学比外省多好几所。"], [24, 40, "同事是外地来的，为了积分落户熬了七年。你第一次觉得户口这张纸挺沉。"]],
+        上海: [[16, 17, "高考前，班里不少同学已经有了保底的本地大学。"], [24, 40, "相亲时对方阿姨先问：“侬屋里厢有房子伐？户口是上海的伐？”"]],
+        天津: [[8, 40, "周末跟着爸爸去茶馆听相声，台下笑成一片。"]],
+        山西: COAL_T, 内蒙古: COAL_T,
+        陕西: [...COAL_T, [18, 22, "西安的大学一所挨一所，周末去别的学校蹭课都方便。"]],
+        湖北: [[18, 22, "武汉的大学多得数不过来，光是江边就有好几所。"]],
+        海南: [[18, 60, "下午三点，街边的老爸茶馆坐满了人，一壶茶能喝到天黑。"]],
+        西藏: WEST_T, 新疆: WEST_T, 青海: WEST_T, 宁夏: WEST_T, 甘肃: WEST_T,
+      };
+      function provYear(a) {
+        const n = S.p.n, T = PTXT[n] || [];
+        // 风物：每年最多一句
+        for (let i = 0; i < T.length; i++) { const [lo, hi, t] = T[i]; if (a >= lo && a <= hi && !S.seen["pt" + i] && R() < 0.2) { S.seen["pt" + i] = 1; log(t); break; } }
+        const work = a >= 17 && a < 60 && !student() && !(S.track === "high" && a <= 18);
+        // 劳务输出：老乡带你出去打工（17–35 岁，在老家打工、务农的人）
+        if (work && a <= 35 && !S.migr && !S.seen.outAsk && !pf("dest", 0) && (S.sit === "work" || S.sit === "farm") && S.loc !== "big"
+          && R() < 0.035 * pf("out") * (S.urban ? 0.6 : 1.2) * (S.fam0 <= 1 ? 1.2 : 0.6)) {
+          S.seen.outAsk = 1; const to = OUT_TO[n] || "沿海的工厂";
+          Q.push(() => modal(`${a} 岁 · 老乡来叫你`, `同村的人从${to}回来过年，说那边一个月能挣七八千，年后还缺人。`, [
+            ["跟着出去", "收入多一些 · 离家远 · 家人−", () => { S.migr = S.age; S.sit = "work"; S.dlv = 0; S.loc = "prov"; S.lvl = Math.max(S.lvl, 0.45); S.cut = 1; relAdd("Rf", -3); leave(); log(`年初八，你背着蛇皮袋上了去${to}的大巴。`); }],
+            ["留在家里", "守着父母 · 收入少一些", () => { relAdd("Rf", 2); log("你想了一夜，还是留了下来。"); }],
+          ]));
+        }
+        // 经商氛围：浙江、广东、福建的老乡拉你做生意（24–42 岁）
+        if (pf("biz") >= 1.25 && work && a >= 24 && a <= 42 && !S.seen.bizAsk && !["boss", "gov"].includes(S.sit) && !S.heir && R() < 0.035 * pf("biz")) {
+          S.seen.bizAsk = 1;
+          const what = n === "浙江" ? rnd(["义乌小商品城空出一个摊位，表哥说一起做外贸小商品", "温州的老乡在做鞋，缺一个管销售的合伙人"]) : n === "福建" ? rnd(["晋江的老乡开鞋服厂，问你要不要入股", "莆田的亲戚做生意，宗亲里凑了一笔钱拉你一起干"]) : rnd(["老乡在佛山做家具，档口缺人打理", "表叔在东莞开厂，问你要不要出来自己干"]);
+          Q.push(() => modal(`${a} 岁 · 一起做生意`, `${what}。`, [
+            ["下海", "收入大起大落 · 家里或许能出点本钱", () => { S.sit = "boss"; S.job = 1.3; S.dlv = 0; S.hp -= 3; const sd = potUse(Math.min(S.famPot * 0.4, seedOf() * 0.6)); if (sd >= 0.5) { S.money += sd; S.seed = sd; } log(`你辞了工作，跟着做起了生意${sd >= 0.5 ? `，家里拿了 ${f1(sd)} 万本钱` : ""}。`); }],
+            ["安安稳稳上班", "一切照旧", () => log("你笑着推了：“我不是做生意的料。”")],
+          ]));
+        }
+        // 煤炭、能源大省：行情起落
+        if (pf("coal", 0) && work && a >= 20 && a <= 55 && !(S.coalCd > a) && ["work", "white", "boss"].includes(S.sit) && R() < 0.05) {
+          S.coalCd = a + 8;
+          if (R() < 0.55) { const b = 1 + 3 * R(); S.money += b; S.joy = clamp(S.joy + 3); log(`煤价涨了，${n}的${S.sit === "boss" ? "生意" : "单位"}跟着沾光，年底多拿了 ${f1(b)} 万。`, "warm"); }
+          else { S.cut *= 0.92; S.joy = clamp(S.joy - 3); log("煤矿限产、电厂减负荷，工资跟着降了一截。", "bad"); }
+        }
+        // 西部计划：边疆省份的大学毕业生
+        if (pf("west", 0) && a === 22 && S.track === "high" && tk() >= 2 && !S.seen.xb && R() < 0.35) {
+          S.seen.xb = 1;
+          Q.push(() => modal("22 岁 · 西部计划", "学校在招西部计划志愿者：去县里服务两年，以后考公有加分。", [
+            ["报名", "考公把握↑ · 朋友+", () => { S.xb = 1; relAdd("Rp", 2); S.joy += 3; log("你报了名，去县里的乡镇服务了两年。"); }],
+            ["不去", "按原计划走", () => log("你把报名表塞进了抽屉。")],
+          ]));
+        }
+        // 河北：环京通勤
+        if (n === "河北" && work && a >= 24 && a <= 45 && !S.seen.hb && S.sit !== "farm" && R() < 0.06) { S.seen.hb = 1; add("hp", -2); log("你在燕郊买了房，每天五点半起床，坐两个小时的车去北京上班。"); }
+        // 云南：旅游大省
+        if (n === "云南" && work && a >= 25 && a <= 55 && !S.seen.yn && R() < 0.04) { S.seen.yn = 1; const b = 1 + 2 * R(); S.money += b; S.joy = clamp(S.joy + 3); log(`旅游旺季，你把家里的空房改成民宿，一个夏天挣了 ${f1(b)} 万。`, "warm"); }
+      }
+      function tick() {
+        if (S.dead || blocked || momentOpen()) return stop();
+        S.age++; S.tags = new Set(); S.loss = ""; S.iq0 = S.iq; S.rel0 = S.rel; newYear();
+        const a = S.age, st = a < 6 ? "baby" : a < 12 ? "kid" : a < 18 ? "teen" : a < 40 ? "adult" : a < 60 ? "mid" : "old";
+        const fo = focusNow(), x = (S.fx = fo ? fo[2] : {}); S.focus = fo ? fo[0] : "";
+        const f = S.focus, tr = S.track;
+        // 健康：年龄曲线，务农/打工或卷得多更快，养生/运动更慢
+        let dec = a < 30 ? 0 : a < 45 ? 0.4 : a < 60 ? 1 : 1.8;
+        if ((a >= 16 && !S.urban && (S.sit === "farm" || S.sit === "work")) || tr === "work" || S.juan >= 4) dec *= 1.3;
+        if (f === "养生" || f === "运动") dec *= 0.8;
+        S.hp += -dec + (Math.random() * 2 - 1);
+        // 幸福：回归天生底色 20%，小幅波动
+        S.joy += (S.jb - S.joy) * 0.2 + (Math.random() * 4 - 2);
+        S.hp += x.hp || 0; S.joy += x.joy || 0;
+        S.hp = clamp(S.hp); S.joy = clamp(S.joy);
+        const q = (Q = []);
+        STORY.year(S, { log, modal, moment, kfx, rel: relAdd, q: (f) => Q.push(f) });
+        const line = S.last;
+        if (S.loss === "父亲" && !S.inh) inherit();
+        if (a === 18) famStart();
+        famYear(a); provYear(a);
+        money(q); grow(a, f, x); know(a, f); milestone(a); overlays(line); render();
+        const h = Math.min(1, S.a * Math.exp(GB * a) * (1 + (60 - S.hp) / 100));
+        if (Math.random() < h) return die();
+        if (REFLECT[a]) q.push(() => reflect(a));
+        if (a === 6 && S.xq) log(S.fam >= 3 ? "家里早早备好了学区房，你就近上了一所好小学。" : "家里咬牙买了学区房，你就近上了一所好小学。");
+        if (a === 12) q.push(choose12); else if (a === 15) q.push(choose15); else if (a === 18 && S.track === "high") q.push(choose18); else if (a === 19 && S.retake) gaokao("复读"); else if (a === 23) q.push(choose23);
+        if (S.ez && S.ez === a) q.push(() => { S.ez = 0; if (govTry(govP() * 1.15, true)) return false; choose23(2); });
+        evalMood();
+        if (Q.length) flow();
+      }
+      function modal(title, sub, opts) {
+        stop(); skipping = false; keys();
+        $("m-title").textContent = title; $("m-sub").textContent = sub;
+        const box = $("m-opts"); box.innerHTML = "";
+        opts.forEach(([label, note, fn]) => {
+          const b = document.createElement("button"); b.className = "x-opt";
+          b.innerHTML = `${label}<small>${note}</small>`;
+          b.onclick = () => {
+            $("modal").hidden = true; S.lt = "choice"; fn(); S.lt = null;
+            S.hp = clamp(S.hp); S.joy = clamp(S.joy); S.iq = clamp(S.iq); render(); evalMood(); resume();
+          };
+          box.appendChild(b);
+        });
+        $("modal").hidden = false; box.firstChild.focus();
+      }
+      // 人生时刻：一直开着，等玩家点按钮；只有快进（自动模式）时 8 秒后自己收起 / 选第一项
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+      const FOOT = '<svg class="x-mo__foot" viewBox="0 0 44 56" aria-hidden="true"><ellipse cx="22" cy="36" rx="11" ry="17"/><circle cx="10" cy="15" r="3.6"/><circle cx="17" cy="9" r="3.4"/><circle cx="24.5" cy="7" r="3.2"/><circle cx="31" cy="9.5" r="2.8"/><circle cx="35.5" cy="15" r="2.4"/></svg>';
+      const PHONE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg>';
+      let moT = [], moResume = null, moAt = 0, moFinish = null;
+      const autoMode = () => skipping;
+      function moment(kind, title, body, opts) {
+        stop(); blocked = true; keys();
+        moResume = resume || flow; moAt = performance.now(); moFinish = null;
+        const lines = String(body || "").split("\n"), ps = lines.map((l) => `<p>${esc(l)}</p>`).join("");
+        const b = `<div class="x-mo__b">${ps}</div>`, t = esc(title);
+        const html = {
+          letter: `<p class="x-mo__t">${t}</p><div class="x-mo__b">${lines.map(() => "<p></p>").join("")}</div><span class="x-mo__seal" aria-hidden="true">缄</span>`,
+          cert: `<div class="x-mo__cover"><span class="x-mo__emb" aria-hidden="true">囍</span><p class="x-mo__t">${t}</p><div class="x-mo__page">${b}</div></div>`,
+          baby: `${FOOT}<p class="x-mo__t">${t}</p>${b}`,
+          note: `<span class="x-mo__tape" aria-hidden="true"></span><div class="x-mo__paper"><p class="x-mo__t">${t}</p>${b}</div>`,
+          call: `<p class="x-mo__lbl">来电</p><p class="x-mo__t">${t}</p><div class="x-mo__ring" aria-hidden="true">${PHONE}</div>${b}`,
+        }[kind] || `<span class="x-mo__tape" aria-hidden="true"></span><div class="x-mo__paper"><p class="x-mo__t">${t}</p>${b}</div>`;
+        const box = $("moment"), card = $("mo-card");
+        box.className = "x-mo x-mo--" + (kind in { letter: 1, cert: 1, baby: 1, note: 1, call: 1 } ? kind : "note");
+        card.innerHTML = html; card.setAttribute("aria-label", `${title}：${lines.join(" ")}`);
+        moT.forEach(clearTimeout); moT = [];
+        // 按钮：给了 opts 就是选项（同抉择弹窗），否则是“收好”
+        const ob = $("mo-opts"), go = $("mo-go"), has = Array.isArray(opts) && opts.length;
+        ob.innerHTML = ""; ob.hidden = !has; go.hidden = !!has;
+        if (has) opts.forEach(([label, note, fn]) => {
+          const b = document.createElement("button"); b.className = "x-opt";
+          b.innerHTML = `${esc(label)}${note ? `<small>${esc(note)}</small>` : ""}`;
+          b.onclick = () => pickMoment(fn);
+          ob.appendChild(b);
+        });
+        box.hidden = false; (has ? ob.firstChild : go).focus();
+        if (kind === "letter") {
+          const out = card.querySelectorAll(".x-mo__b p");
+          const all = () => { moT.forEach(clearTimeout); lines.forEach((l, i) => out[i] && (out[i].textContent = l)); moFinish = null; };
+          if (REDUCED) all();
+          else {
+            let i = 0, j = 0;
+            const type = () => {
+              while (i < lines.length && j >= lines[i].length) { i++; j = 0; }
+              if (i >= lines.length || !out[i]) return (moFinish = null);
+              out[i].textContent = lines[i].slice(0, ++j);
+              moT.push(setTimeout(type, 40));
+            };
+            moFinish = all; type();
+          }
+        }
+        if (kind === "call") {
+          const q = card.querySelector(".x-mo__b");
+          REDUCED ? q.classList.add("is-in") : moT.push(setTimeout(() => q.classList.add("is-in"), 1400));
+        }
+        // 只有自动模式才自己收：无选项 8 秒后收起；有选项时按 opts.auto 替你选（情书等 10 秒，绝不立刻）
+        if (autoMode()) moAuto = setTimeout(() => {
+          if (!has) return closeMoment(true);
+          const ai = typeof opts.auto === "function" ? opts.auto() : 0;
+          pickMoment((opts[ai] || opts[0])[2], true);
+        }, kind === "letter" && has ? 10000 : 8000);
+      }
+      let moAuto = 0;
+      function hideMoment(byAuto) {
+        const box = $("moment"); if (box.hidden) return false;
+        if (!byAuto && performance.now() - moAt < 350) return false; // 挡住打开它那一下的余波
+        moT.forEach(clearTimeout); moT = []; clearTimeout(moAuto); moFinish = null;
+        box.hidden = true; $("mo-opts").innerHTML = "";
+        return true;
+      }
+      function closeMoment(byAuto) {
+        if (!hideMoment(byAuto === true)) return;
+        const r = moResume; moResume = null; (r || flow)();
+      }
+      function pickMoment(fn, byAuto) {
+        if (!hideMoment(byAuto === true)) return;
+        S.lt = "choice"; fn(); S.lt = null;
+        S.hp = clamp(S.hp); S.joy = clamp(S.joy); S.iq = clamp(S.iq); render(); evalMood();
+        const r = moResume; moResume = null; (r || flow)();
+      }
+      $("mo-go").onclick = () => closeMoment();
+      // 打字机还在写时，点信纸直接写完
+      $("mo-card").onclick = () => { if (moFinish) moFinish(); };
+      // 状态栏上的学历：中学阶段显示学校，高考后显示录取层次
+      function eduTag() {
+        if (S.uni) return S.uni + (S.ky ? " · 研究生" : "");
+        if (S.track === "voc") return "职校";
+        if (S.track === "work") return "";
+        return S.school === "key" ? "重点中学" : S.school === "normal" ? "普通中学" : "";
+      }
+      const P = (v) => (v > 0 && v < 0.005 ? "不到 1%" : Math.round(v * 100) + "%");
+      const cl01 = (v, lo = 0.03, hi = 0.9) => Math.max(lo, Math.min(hi, v));
+      // 12 岁 · 小升初：重点中学的把握来自知识、城乡、家境和学区房
+      function keyChance() { return cl01(0.1 + (S.iq - 20) * 0.008 + (S.urban ? 0.12 : 0) + KEYB[S.fam] + (S.xq ? 0.15 : 0) - 0.03 * (S.p.t - 1), 0.05, 0.85); }
+      function choose12() {
+        const p = keyChance();
+        modal("12 岁 · 小升初", `重点中学名额有限。你的把握约 ${P(p)}（知识 ${S.iq} · ${S.urban ? "城镇" : "农村"} · ${famLabel(S)}${S.xq ? " · 学区房加分" : ""}）`, [
+          ["考重点中学", `把握约 ${P(p)}，没考上就读普通中学`, () => {
+            if (R() < p) { S.school = "key"; S.joy += 6; kUp("Kb", 2); log("考进了重点中学。", "big"); }
+            else { S.school = "normal"; S.joy -= 4; log("差了几分，没考上重点中学，去了片区的普通中学。", "bad"); }
+          }],
+          ["就近读普通中学", "压力小，幸福+4", () => { S.school = "normal"; S.joy += 4; log("就近上了普通中学，离家走路十分钟。"); }],
+        ]);
+      }
+      // 15 岁 · 中考：重点中学高中部给高考加成
+      function choose15() {
+        const k = S.school === "key", p = cl01((k ? 0.45 : 0.15) + (S.iq - 40) / 120 + (S.urban ? 0.05 : 0), 0.05, 0.9);
+        modal("15 岁 · 中考之后", `人生第一个岔路口。你在${k ? "重点" : "普通"}中学读完了初中。`, [
+          ["冲重点中学高中部", `把握约 ${P(p)} · 高考加成 · 压力大`, () => {
+            S.track = "high"; S.joy -= 5; kUp("Kb", 5);
+            if (R() < p) { S.school = "key"; log(k ? "中考过线，留在了重点中学高中部。" : "中考逆袭，考进了重点中学高中部。", "big"); }
+            else { S.school = "normal"; log("差了几分，没冲上重点中学，读了普通中学高中部。", "bad"); }
+          }],
+          ["读普通中学高中部", "冲高考，压力小一些", () => { S.track = "high"; S.school = "normal"; S.joy -= 2; kUp("Kb", 3); log("上了普通中学的高中部。"); }],
+          // 家境好的，家里不会让你这么早出去打工；第 5 级及以上连职校也不在考虑里
+          S.fam <= 3 && ["读职校", "学一门手艺，三年后工作", () => { S.track = "voc"; S.edu = 1.05; S.tierK = TIERK.职校; S.loc = "prov"; log("进了职业学校。"); }],
+          S.fam <= 2 && ["打工", S.fam === 0 ? "早点挣钱养家 · 家里确实缺钱" : "早点挣钱养家", () => { S.track = "work"; S.edu = 0.85; S.loc = "prov"; S.joy -= 5; leave(); goOut(); log(S.migr ? `背上行李，去${OUT_TO[S.p.n] || "外省"}打工。` : "背上行李出门打工。"); }],
+        ].filter(Boolean));
+      }
+      // 高考：本科把握 b 来自知识、省份难度档、城乡和重点中学；策略改变名校比例和落榜风险
+      const TIERS = [["C9", 2.0], ["985", 1.8], ["211", 1.6], ["普通本科", 1.3], ["专科", 1.05], ["落榜", 1]];
+      const STRAT = { 冲名校: { top: 1.6, b: 0.85, fail: 0.45, s: 0 }, 稳妥: { top: 0.6, b: 1.05, fail: 0.12, s: 0 }, 复读: { top: 1, b: 1, fail: 0.25, s: 0.08 } };
+      function strength(st) { return [0, 0.65, 0.45, 0.35][S.p.t] * (S.urban ? 1 : 0.55) + (S.iq - 50) / 200 + (S.school === "key" ? 0.1 : 0) + st.s
+        + GKB[S.fam] + (S.parEdu === 3 ? 0.02 : 0) + pf("gk", 0) + (!S.urban && S.famPct < 30 ? 0.04 : 0); } // 国家专项计划：农村困难家庭的孩子有专门的名额 // 补习、学区、资源：加减；省份：京沪友好、边疆加分、江苏河南更难
+      // 各层“至少考到”的累计概率：C9、985、211、本科、专科
+      function odds18(name) {
+        const st = STRAT[name], s = Math.max(0.03, Math.min(1.1, strength(st)));
+        const b = cl01(cl01(s, 0.03, 0.95) * st.b + pf("uni", 0), 0.03, 0.97); // 湖北、陕西高校多：本科把握略高
+        const c211 = Math.min(b * 0.9, b * 0.58 * Math.pow(s, 1.15) * st.top);
+        const c985 = Math.min(c211 * 0.85, b * 0.37 * Math.pow(s, 1.9) * st.top);
+        const c9 = Math.min(c985 * 0.6, b * 0.16 * Math.pow(s, 2.4) * st.top);
+        return [c9, c985, c211, b, b + (1 - b) * (1 - st.fail)];
+      }
+      const UNI = {
+        C9: ["顶尖综合大学", "老牌名校"], "985": ["重点大学", "综合性大学"], "211": ["理工大学", "财经大学", "师范大学"],
+        普通本科: ["师范学院", "理工学院", "财经学院"], 专科: ["职业技术学院", "高等专科学校"],
+      };
+      const AREA = ["华北", "华东", "华南", "华中", "西南", "西北", "东北"];
+      function gaokao(name) {
+        S.retake = false;
+        const c = odds18(name), u = R();
+        let i = c.findIndex((v) => u < v); if (i < 0) i = 5;
+        const [tier, edu] = TIERS[i];
+        S.edu = edu; S.tierK = TIERK[tier] || 0;
+        if (tier === "落榜") { S.track = "grad"; S.uni = "高中毕业"; S.joy -= 12; log("高考落榜，分数线差了一截。拿着高中毕业证，开始找工作。", "bad"); return; }
+        S.uni = tier;
+        const where = tier === "普通本科" || tier === "专科" ? rnd(["本省", "省内", "邻省"]) : rnd(AREA);
+        log(`录取通知书来了：${where}某${rnd(UNI[tier])}（${tier}）`, i <= 3 ? "big" : "plain");
+        if (i <= 1) { S.joy += 14; log("全家放鞭炮，亲戚的电话一个接一个。", "warm"); }
+        else if (i <= 3) S.joy += 8;
+        else { S.joy -= 4; log("没够上本科线，读了专科，也算上了大学。"); }
+      }
+      function choose18() {
+        const o = (n) => odds18(n), note = (c) => `985 以上约 ${P(c[1])} · 本科约 ${P(c[3])} · 落榜约 ${P(1 - c[4])}`;
+        const mid = o("稳妥");
+        const gn = pf("gk", 0) > 0 ? (pf("west", 0) ? " · 边疆加分" : " · 本地录取率高") : pf("gk", 0) < 0 ? (S.p.n === "河南" ? " · 考生多竞争激烈" : " · 教育强省分数线高") : pf("uni", 0) ? " · 本省高校多" : "";
+        modal("18 岁 · 高考", `难度档 ${S.p.t}${gn} · ${S.urban ? "城镇" : "农村"} · ${S.school === "key" ? "重点" : "普通"}中学 · 本科把握约 ${P(mid[3])}`, [
+          ["冲名校", note(o("冲名校")), () => gaokao("冲名校")],
+          ["稳妥", note(mid), () => gaokao("稳妥")],
+          ["复读", "再拼一年，把握略高", () => { S.retake = true; S.joy -= 10; log("决定复读一年。"); }],
+          (S.fam >= 4 || (S.fam === 3 && S.famPot >= 150) || ((S.src === "exec" || S.intl) && S.fam >= 2 && S.famPot >= 80)) && ["出国留学", `家里出约 ${abroadCost()} 万 · 学历按 985 档算`, abroad],
+        ].filter(Boolean));
+      }
+      // 学历名：身份栏、23 岁抉择、结局共用
+      const tierName = () => (S.uni || (S.track === "voc" ? "职校" : S.track === "work" ? "初中毕业" : "高中毕业")) + (S.ky ? " · 研究生" : "");
+      // 23 岁去处的把握，按学历档 0–7 取值
+      const GOVP = [0.03, 0.05, 0.08, 0.25, 0.32, 0.38, 0.42, 0.45], WHP = [0, 0, 0.2, 0.55, 0.75, 0.88, 0.95, 0.97];
+      const LVL0 = [0, 0, 0.08, 0.18, 0.3, 0.4, 0.45, 0.5], CTYP = [0, 0, 0, 0.3, 0.37, 0.43, 0.5, 0.5];
+      const govP = () => cl01(GOVP[tk()] * (0.6 + S.iq / 100) * pf("govP") * (S.xb ? 1.15 : 1) * (S.src === "cadre" ? 1.12 : 1), 0.01, 0.75);
+      // 家里只认编制：考公大省、东北更常见；干部家庭几乎一定会催
+      const bzP = () => (S.src === "cadre" ? 0.75 : pf("gov") > 1 ? 0.35 * (pf("gov") / 1.3) : 0.08);
+      const BZ_T = { 山东: "饭桌上，二姨说：“考个公务员，在咱山东才算有出息。”爸妈跟着点头：“别的都不算正经工作。”", 辽宁: "爸说：“当年厂子说没就没了，还是体制内稳当。”", 吉林: "爸说：“当年厂子说没就没了，还是体制内稳当。”", 黑龙江: "爸说：“当年厂子说没就没了，还是体制内稳当。”" };
+      const wr = (v) => (v >= 10 ? String(Math.round(v)) : f1(v));
+      const yr = (s, m) => { const [lo, hi] = SIT[s], pf = PF(); return `${wr(lo * m * pf)}–${wr(hi * m * pf)} 万`; };
+      function govTry(p, second) {
+        S.gkTry = (S.gkTry || 0) + 1;
+        if (R() < p) { S.gkPass = 1; S.job = 1.1; S.sit = "gov"; S.cut = 1; S.loc = S.urban ? "prov" : "county"; S.joy += 8; log(second ? "二战上岸，考上了公务员。" : "考上了公务员，端上铁饭碗。", "big"); return true; }
+        S.joy -= 6; log(`差了 ${f1(0.5 + 2.5 * R())} 分，进面失败。`, "bad"); return false;
+      }
+      // again：1 = 第一次考公没过，可以二战；2 = 二战也没过
+      function choose23(again) {
+        // 家里的人脉：白领岗、县城事业单位的把握随出身档位小幅浮动（考公只看考试，不加）
+        const nw = NW[S.fam0] * sx("nw");
+        const k = tk(), m = eduMul(), gp = govP(), wp = Math.min(0.97, WHP[k] * nw), cp = S.urban ? Math.min(0.6, CTYP[k] * nw) : 0;
+        if (!again && !S.seen.bz && S.sit !== "gov" && R() < bzP()) {
+          S.seen.bz = 1;
+          return modal(`${S.age} 岁 · 家里只认编制`, (S.src === "cadre" ? "爸爸放下茶杯：“考编。我在单位干了半辈子，这条路我门儿清，面试前给你找人辅导。”" : 0) || BZ_T[S.p.n] || "过年回家，爸妈翻来覆去就一句话：“考个编制吧，稳当。”", [
+            ["听家里的，先考公", `上岸把握约 ${P(gp)} · 年入 ${yr("gov", govMul())}`, () => { relAdd("Rf", 2); if (!govTry(gp)) Q.unshift(() => choose23(1)); }],
+            ["我想自己选", "家人−2 · 照常选择去处", () => { relAdd("Rf", -2); log("你说想自己选。爸妈叹了口气，没再说什么。"); Q.unshift(() => choose23()); }],
+          ]);
+        }
+        if (!again && k >= 5 && !S.seen.alum) { S.seen.alum = 1; S.Rp = Math.min(100, S.Rp + 4); S.Rw = Math.min(100, S.Rw + 5); relSync(); log("校友群里，师兄师姐常转来内推机会。", "warm"); }
+        const work = `打工年入 ${yr("work", m)}`;
+        const gov = again === 1
+          ? ["明年二战", `脱产备考一年，边打零工 · 把握约 ${P(Math.min(0.75, gp * 1.15))}，年入 ${yr("gov", govMul())}`, () => { S.ez = S.age + 1; S.sit = "work"; S.lvl = 0.05; S.cut = 1; S.loc = S.urban ? "prov" : "county"; S.joy -= 4; kUp("Ka", 2); log("决定二战。白天打零工，晚上刷申论。"); }]
+          : !again && ["考公", `上岸把握约 ${P(gp)} · 年入 ${yr("gov", govMul())}，稳定、体面`, () => { if (!govTry(gp)) Q.unshift(() => choose23(1)); }];
+        modal(`${S.age} 岁 · ${again ? "再选一次" : "选择去处"}`, `${tierName()} · 知识 ${S.iq} · ${again ? "公务员这条路没走通。" : "这一步决定了往后几十年的节奏。"}`, [
+          gov,
+          ["去大城市", (k >= 2 ? `${k === 2 ? "技术岗" : "大厂白领"}把握约 ${P(wp)}，年入 ${yr("white", m)}；否则${work}` : work) + " · 房租 2.4 万，伤身", () => {
+            S.job = 1.6; S.loc = "big"; S.hp -= 8; S.joy -= 6; S.cut = 1; leave();
+            if (R() < wp) { S.sit = "white"; S.lvl = Math.min(1, S.lvl * (k === 2 ? 0.3 : 0.6) + LVL0[k]); log(k === 2 ? "在一线城市找到一份技术岗。" : "进了一线城市的大厂。"); }
+            else { S.sit = "work"; goOut(); log(k >= 2 ? "简历投了上百份，没等来白领岗，先在一线城市打工。" : "去了一线城市闯荡。"); }
+          }],
+          ["回老家", S.urban ? (cp ? `县城事业单位或教师把握约 ${P(cp)}，年入 ${yr("gov", govMul() * 0.85)}；否则${work}` : work) + " · 花销小" : "务农年入 2–3 万，花销小", () => {
+            S.job = 0.8; S.loc = S.urban ? "county" : "rural"; S.joy += 12; S.cut = 1;
+            if (R() < cp) { S.sit = "gov"; S.cut = 0.85; S.lvl *= 0.4; log(rnd(["回到老家，考进了县城的事业单位。", "回到老家，在县城中学当了老师。"])); }
+            else if (S.urban && k >= 2 && R() < HOMEW[S.fam]) { S.sit = "white"; S.lvl *= 0.5; log(rnd(["托家里的关系，进了本地一家银行。", "爸妈托了老同学，你进了本地一家国企。"])); }
+            else { S.sit = S.urban || R() < HOMEJ[S.fam] ? "work" : "farm"; log(S.sit === "work" && !S.urban ? "回到老家，在亲戚介绍的厂里上班，守在父母身边。" : "回到老家，守在父母身边。"); }
+          }],
+          ["创业", `一年 −10 万到 +50 万，大起大落${SEED[S.fam] && S.famPot >= 1 ? ` · 家里能拿出约 ${Math.round(Math.min(seedOf(), S.famPot * 0.5))} 万启动资金` : ""}`, () => {
+            S.job = 1.3; S.sit = "boss"; S.loc = "prov"; S.hp -= 4;
+            const sd = potUse(Math.min(S.famPot * 0.5, seedOf() * (0.7 + 0.6 * R())));
+            if (sd >= 0.5) { S.money += sd; S.seed = sd; log(`揣着全部积蓄和家里给的 ${f1(sd)} 万，开始创业。`); } else log("揣着全部积蓄，开始创业。");
+          }],
+        ].filter(Boolean));
+      }
+      function die() {
+        S.dead = true; skipping = false; stop(); log("走完了这一生。", "big"); keys(); hist(false); pop(false);
+        document.documentElement.classList.add("is-ended");
+        setTimeout(() => {
+          $("e-title").textContent = S.age >= S.le ? `${S.name}走完了比预期更长的一生。` : `${S.name}的一生，在 ${S.age} 岁画上句号。`;
+          $("e-age").textContent = S.age + " 岁";
+          $("e-inc").textContent = Math.round(S.inc) + " 万";
+          const wan = (v) => (v < 0 ? "−" : "") + Math.abs(Math.round(v)) + " 万", hs = S.house;
+          const net = S.money + (hs ? hs.P - hs.P * 0.7 * hs.left / 30 : 0) + (S.famProp || 0);
+          $("e-peak").textContent = wan(S.peak); $("e-low").textContent = wan(S.low); $("e-net").textContent = wan(net);
+          $("e-net").style.color = net < 0 ? "var(--fill-system-red)" : "";
+          $("e-low").style.color = S.low < 0 ? "var(--fill-system-red)" : "";
+          $("e-av").innerHTML = drawAvatar(S);
+          $("e-snaps").innerHTML = S.snaps.map((v, i) => (v ? `<figure>${v.svg}<figcaption>${STG[i]} · ${v.age} 岁</figcaption></figure>` : "")).join("");
+          $("e-where").textContent = `${S.p.n} · ${huji(S)}${S.age >= 18 ? " · " + tierName() : eduTag() ? " · " + eduTag() : ""} · 预期寿命 ${S.le} 岁`;
+          // 出身对比：最终净资产（万）折成同一把十级尺子：分界 6 · 50 · 185 · 420 · 600 · 1000 · 1 亿 · 5 亿 · 20 亿
+          const myT = [6, 50, 185, 420, 600, 1000, 10000, 50000, 200000].filter((v) => net >= v).length, dT = myT - S.fam0, cn = ["", "一", "两", "三", "四", "五", "六", "七", "八", "九"][Math.abs(dT)];
+          S.netEnd = net;
+          $("e-fam").textContent = `出身：第 ${S.fam0 + 1} 级 · ${famShow(S, S.fam0)}${S.src ? ` · 家底：${srcTxt(S)}` : ""} · 最终净资产约相当于「第 ${myT + 1} 级 · ${famLabel(S, myT)}」，${dT > 0 ? `比父母那一代往上走了${cn}级` : dT === 0 ? "守住了" : `比父母那一代往下走了${cn}级`}。`;
+          const E = STORY.ending(S), hl = E.highlights || [], end = $("s-end");
+          S.shareTxt = `我在「地球 online（国服公测版）」投胎到${place(S)}的${famShow(S, S.fam0)}（第 ${decOf(S.fam0)} 级${S.src && S.src !== "dual" ? " · " + srcTag(S) : ""}），活到 ${S.age} 岁，一生收入 ${Math.round(S.inc)} 万。墓志铭：${E.epitaph}`;
+          $("e-epi").textContent = E.epitaph;
+          $("e-epiq").textContent = E.epiLine || ""; $("e-epiq").hidden = !E.epiLine;
+          $("e-sign").textContent = `「${E.sign}」`;
+          $("e-verse").textContent = E.verse;
+          const ul = $("e-hl"), hlBox = ul.parentNode;
+          ul.innerHTML = hl.map((h) => `<li>${h}</li>`).join("");
+          ul.hidden = hlBox.firstElementChild.hidden = !hl.length;
+          $("e-stories").textContent = `经历了 ${E.stories || 0} 段故事`;
+          (window._endT || []).forEach(clearTimeout);
+          const rv = end.querySelectorAll(".x-rv"), gap = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1200;
+          rv.forEach((el) => el.classList.remove("is-in"));
+          show("s-end");
+          window._endT = [0, 1, 2, 3].map((i) => setTimeout(() => rv.forEach((el) => { if (+el.dataset.step === i) el.classList.add("is-in"); }), 150 + i * gap));
+        }, 900);
+      }
+    </script>
+    <script>
+      (() => {
+        const box = document.getElementById("soft"), help = document.getElementById("soft-help");
+        const sync = () => (help.textContent = box.checked ? "当前：温和模式。离世、流产、骗局等沉重情节只用一句话带过。" : "当前：正常模式。人生的生老病死都会完整讲述。");
+        box.addEventListener("change", sync); sync();
+      })();
+    </script>
+  </body>
+</html>

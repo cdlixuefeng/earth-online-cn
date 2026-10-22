@@ -1,0 +1,32 @@
+// 婚姻校准：并行跑 verify.js 的分片后合并。node work/marry.js out1.json out2.json ...
+const fs = require("fs");
+const parts = process.argv.slice(2).map((f) => JSON.parse(fs.readFileSync(f, "utf8")));
+const MAR = parts.flatMap((p) => p.MAR), N = parts.reduce((s, p) => s + p.N, 0);
+const IDS = new Set(parts.flatMap((p) => p.IDS.map((x) => x[0])));
+const errN = parts.reduce((s, p) => s + p.errN, 0), sum = (k) => parts.reduce((s, p) => s + (p[k] || 0), 0);
+const fails = parts.flatMap((p) => p.fail);
+const pc = (v) => (v * 100).toFixed(1) + "%";
+const med = (a) => { const b = [...a].sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : 0; };
+const nv = (a) => { const b = a.filter((r) => r.a50); return b.length ? `${pc(b.filter((r) => r.fw == null || r.fw > 50).length / b.length)} (n=${b.length})` : "–"; };
+const by30 = (a) => { const b = a.filter((r) => r.a30); return pc(b.filter((r) => r.fw != null && r.fw <= 30).length / b.length); };
+const mfa = (a) => med(a.filter((r) => r.fw != null).map((r) => r.fw + Math.random())).toFixed(1); // 整岁 → 均匀落在这一岁里
+const M_ = MAR.filter((r) => r.m), W_ = MAR.filter((r) => !r.m), hi = (r) => r.eg === "本科" || r.eg === "硕士/985+";
+console.log(`== ${N} 条人生 · 错误 ${errN} ==`);
+parts.flatMap((p) => p.ERR || []).forEach(([k, v]) => console.log("  ERR x" + v, k));
+console.log(`情书 id ${IDS.size}/99 · 认不出 ${sum("unknownId")} · 同生重复 ${sum("repeatId")} · 槽位未填 ${sum("slotLeft")} · 婚后收到的信 ${sum("wedLetters")} · 写信人错配 ${fails.length}`);
+fails.forEach((f) => console.log("  FAIL " + f));
+const AF = parts.reduce((s, p) => ({ tempt: s.tempt + p.AF.tempt, sp: s.sp + p.AF.sp, div: s.div + p.AF.div, livesDiv: s.livesDiv + p.AF.livesDiv }), { tempt: 0, sp: 0, div: 0, livesDiv: 0 });
+console.log(`出轨：被诱惑 ${AF.tempt} · 伴侣出轨 ${AF.sp}（比值 ${(AF.tempt / AF.sp).toFixed(2)}）· 出轨离婚 ${AF.div}（${pc(AF.livesDiv / N)} 的人生）`);
+console.log("\n== 婚姻（50 岁未婚只算活到 50 岁的人；30 岁前结婚只算活到 30 岁的人）==");
+console.log(`50 岁从未结婚：全体 ${nv(MAR)} · 男 ${nv(M_)} · 女 ${nv(W_)}`);
+console.log(`城乡×性别：城镇男 ${nv(M_.filter((r) => r.u))} · 农村男 ${nv(M_.filter((r) => !r.u))} · 城镇女 ${nv(W_.filter((r) => r.u))} · 农村女 ${nv(W_.filter((r) => !r.u))}`);
+console.log("学历×性别：");
+["初中及以下", "高中/专科", "本科", "硕士/985+"].forEach((e) => console.log(`  ${e.padEnd(6, "　")} 男 ${nv(M_.filter((r) => r.eg === e))} · 女 ${nv(W_.filter((r) => r.eg === e))}`));
+console.log("梯度两端：");
+console.log(`  农村男 D1–D3 初中及以下 ${nv(M_.filter((r) => !r.u && r.d <= 2 && r.eg === "初中及以下"))} · 农村男 D1–D3 ${nv(M_.filter((r) => !r.u && r.d <= 2))} · 农村男 初中及以下 ${nv(M_.filter((r) => !r.u && r.eg === "初中及以下"))}`);
+console.log(`  城镇男 本科+ ${nv(M_.filter((r) => r.u && hi(r)))}`);
+console.log(`  城镇女 硕士/985+ ${nv(W_.filter((r) => r.u && r.eg === "硕士/985+"))} · 城镇女 D8+ 本科+ ${nv(W_.filter((r) => r.u && r.d >= 7 && hi(r)))} · 城镇女 D8+ ${nv(W_.filter((r) => r.u && r.d >= 7))}`);
+console.log(`30 岁前结过婚：全体 ${by30(MAR)} · 男 ${by30(M_)} · 女 ${by30(W_)}`);
+console.log(`初婚年龄中位数：全体 ${mfa(MAR)} · 男 ${mfa(M_)} · 女 ${mfa(W_)} · 北京/上海 ${mfa(MAR.filter((r) => r.p === "北京" || r.p === "上海"))} · 本科+ ${mfa(MAR.filter(hi))} · 城镇 ${mfa(MAR.filter((r) => r.u))} · 农村 ${mfa(MAR.filter((r) => !r.u))}`);
+const al = MAR.filter((r) => r.a50);
+console.log(`主动不婚（活到 50 岁的人里）${pc(al.filter((r) => r.nm).length / al.length)} · 催婚 ${MAR.reduce((s, r) => s + r.cuihun, 0)} 次 · 剩男事件 ${MAR.reduce((s, r) => s + r.sheng, 0)} 次`);
