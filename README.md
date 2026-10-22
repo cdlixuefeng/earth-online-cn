@@ -9,9 +9,10 @@
 
 ## 在线试玩
 
-游戏已通过豆包发布能力部署上线（非 GitHub Pages），打开即玩，无需安装：
+游戏已双通道部署上线，打开即玩，无需安装：
 
-- **国服公测版**：https://4m49a9qhu0h0w.doubao.link/app/app_17gjsga6zpe
+- **GitHub Pages**：https://cdlixuefeng.github.io/earth-online-cn/
+- **豆包发布版**（备用）：https://4m49a9qhu0h0w.doubao.link/app/app_17gjsga6zpe
 
 > 提示：国际版正在全力开发中。
 
