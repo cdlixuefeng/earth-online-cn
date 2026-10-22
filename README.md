@@ -97,7 +97,7 @@ earth-online-cn/
 ├── hark.css / hark-hero.css   # 纸与墨绘本风样式
 ├── chinamap.json        # 中国地图数据
 ├── assets/
-│   └── cover.jpg        # README 封面（真实运行截图）
+│   └── game-cover.jpg   # README 封面（真实运行截图）
 └── work/                # 模拟与校准脚本（见下）
 ```
 
