@@ -376,17 +376,7 @@
         .x-fam .x-card .x-odds .x-odds__src { font: var(--type-caption); padding-top: 4px; }
         .x-fam .x-card .x-odds .x-odds__two p { font: 14px/1.45 var(--sans); }
       }
-      @media (prefers-reduced-motion: reduce) {
-        #s-end .x-rv { transition: none; transform: none; }
-        html, body::after, .x-bar b, .x-av { transition: none; }
-        .x-lab, .x-p { transition: none; }
-        .x-ur.is-hit, .x-hl--pulse.is-go { animation: none; }
-        .x-born, .x-born::before, .x-born.is-busy::after, .x-born.is-busy svg, .x-born.is-pop { animation: none; }
-        .x-hl--pulse.is-go { opacity: 1; }
-        .x-yr, .x-sheet, .x-reflect, .x-yb, .x-yb .x-ln, .x-mo, .x-mo__card, .x-mo__ring::before, .x-mo__ring::after { animation: none; }
-        .x-yb, .x-yb .x-ln { transition: none; }
-        .x-hist, .x-mo--call .x-mo__b { transition: none; }
-      }
+      /* 动效始终开启：不随系统 reduce-motion 设置关闭（产品要求） */
       /* 来源注：每张卡一行小字 */
       .x-card .x-odds .x-odds__src, .x-fam .x-card .x-odds .x-odds__src, .x-draw__src { font: var(--type-caption); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-wrap: nowrap; }
       .x-srcline:first-of-type { flex: 1 1 100%; }
@@ -804,7 +794,7 @@
       // 节奏：1× = 每年 1.6 秒
       const YEAR_MS = 1600, SKIP_MS = 45;
       let S, timer = null, mult = 1, paused = false, blocked = false, skipping = false, resume = null;
-      const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const REDUCED = false; // 动效始终开启（产品要求，不随系统 reduce-motion 关闭）
 
       // 每行的类型（warm/bad/big/choice）和心境标签
       const TAG = {
@@ -2363,7 +2353,7 @@
           ul.hidden = hlBox.firstElementChild.hidden = !hl.length;
           $("e-stories").textContent = `经历了 ${E.stories || 0} 段故事`;
           (window._endT || []).forEach(clearTimeout);
-          const rv = end.querySelectorAll(".x-rv"), gap = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1200;
+          const rv = end.querySelectorAll(".x-rv"), gap = 1200;
           rv.forEach((el) => el.classList.remove("is-in"));
           show("s-end");
           window._endT = [0, 1, 2, 3].map((i) => setTimeout(() => rv.forEach((el) => { if (+el.dataset.step === i) el.classList.add("is-in"); }), 150 + i * gap));
