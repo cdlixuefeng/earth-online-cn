@@ -162,7 +162,7 @@
       .x-age { font: 600 24px/1 var(--serif); color: var(--ink); }
       .x-age small { font-size: 14px; font-weight: 400; margin-left: 1px; }
       .x-stamp { flex: none; font: 600 12px/1 var(--serif); color: var(--ink); padding: 5px 7px; border: 1.5px solid var(--accent); border-radius: 6px 8px 5px 7px; transform: rotate(-3deg); transition: border-color 2s; }
-      .x-tools { display: flex; align-items: center; gap: 6px; flex: none; position: relative; }
+      .x-tools { display: flex; align-items: center; gap: 6px; flex: none; position: fixed; top: env(safe-area-inset-top); right: calc(max(12px, env(safe-area-inset-right)) + max(0px, calc((100vw - 600px) / 2))); z-index: 65; }
       .x-seg { display: flex; border: 1.5px solid var(--line); border-radius: var(--hand-s); background: var(--paper); overflow: hidden; }
       .x-seg .x-key { border: 0; border-radius: 0; min-height: 44px; height: 44px; }
       .x-seg .x-key + .x-key { border-left: 1.5px solid var(--line-soft); }
@@ -1737,8 +1737,8 @@
           if (R() < 0.03) { const l = S.money * 0.2; ev -= l; S.inv = ""; S.joy -= 8; log(`P2P 平台暴雷，${f1(l)} 万血本无归。`, "bad"); }
           else ev += S.money * 0.2 * 0.08;
         }
-        if (R() < 0.0005) { ev += 500; S.joy += 20; log("彩票中了 500 万！", "warm"); }
-        if (S.chai && R() < 0.003) { const c = 100 + 200 * R(); S.chai = false; ev += c; S.joy += 15; log(`老家拆迁，分到 ${Math.round(c)} 万补偿款。`, "warm"); }
+        if (R() < 0.0005) { ev += 500; S.joy += 20; q.push(() => moment("note", "意外之财", `你随手买的一张彩票中了头奖。\n税后到手约 500 万。\n这是十万分之五的运气，别指望下一次。`)); }
+        if (S.chai && R() < 0.003) { const c = 100 + 200 * R(); S.chai = false; ev += c; S.joy += 15; q.push(() => moment("note", "老家拆迁", `老家拆迁，分到约 ${Math.round(c)} 万补偿款。`)); }
         if (a > 40 && R() < 0.012) {
           const c = 20 + 40 * R(), own = Math.round(c * (S.urban ? 0.3 : 0.45) * (S.fam0 >= 5 ? 0.4 : 1)), fh = potUse(own * (S.src === "pro" ? Math.max(0.85, MEDC[S.fam0]) : MEDC[S.fam0])), self = own - fh;
           let msg = `查出大病，花了 ${f1(c)} 万，医保报销后自付 ${f1(own)} 万${fh >= 0.5 ? `，家里替你出了 ${f1(fh)} 万` : ""}`;
@@ -2062,7 +2062,8 @@
           if (!S.seen.cq && a >= 3 && a <= 50 && R() < 0.01) {
             S.seen.cq = 1; const v = [100, 150, 300, 500, 800, 1500, 3000][g] * (0.6 + 0.8 * R());
             if (adult) { S.money += v * 0.4; S.famPot += v * 0.6; } else S.famPot += v;
-            S.joy = clamp(S.joy + 10); log(`家里的楼划进了拆迁范围，补偿款加安置房约 ${Math.round(v)} 万。${adult ? `爸妈分给你 ${Math.round(v * 0.4)} 万。` : "爸妈说，这是给你攒的。"}`, "big");
+            S.joy = clamp(S.joy + 10);
+            Q.push(() => moment("note", "家里拆迁", `家里的楼划进了拆迁范围，补偿款加安置房约 ${Math.round(v)} 万。${adult ? `爸妈分给你 ${Math.round(v * 0.4)} 万。` : "爸妈说，这是给你攒的。"}`));
           }
           if (!S.house && !S.seen.fh && a >= 22 && a <= 30 && R() < 0.35) {
             S.seen.fh = 1; S.askH = 1; const P = [80, 120, 200, 300, 500, 800, 1500][g] * (0.8 + 0.4 * R());
