@@ -2006,6 +2006,19 @@
           if (R() < 0.18) { const d = v * (0.2 + 0.4 * R()); S.famPropDebt = d; log(`爸妈把房子过户给你时，还剩 ${Math.round(d)} 万贷款没还完，得你接着还。`, "plain"); }
           log(S.fam0 >= 5 ? `家里在市中心给你全款买了一套房，约 ${Math.round(v)} 万，租出去，租金归你。` : `爸妈拿出大半辈子的积蓄，给你全款买了一套约 ${Math.round(v)} 万的小房子，先租出去。`, "warm");
         }
+        // 爸妈帮忙带娃：家境不差的，孩子小的时候父母搭把手，省下保姆钱（一生一次）
+        if (S.fam0 >= 3 && !S.inh && !S.seen.grandHelp && S.kids.length && a >= 26 && a <= 50 && S.kids.some((k) => a - k <= 6) && R() < 0.5) {
+          S.seen.grandHelp = 1; const sv = S.fam0 >= 5 ? 1.5 : 0.8; S.money += sv;
+          S.joy = clamp(S.joy + 4); relAdd("Rf", 5); S.hp = clamp(S.hp + 2);
+          log(S.fam0 >= 5 ? `孩子刚断奶，爸妈就从老家过来了。白天他们带，晚上你带，省下了一年 ${Math.round(sv)} 万的保姆钱。` : `孩子小，爸妈常来搭把手。你加班的日子，他们把孩子接去住了两天，你心里踏实了很多。`, "warm");
+        }
+        // 父母退休金：中上家庭的父母退休金不错，逢年过节还补贴你们；高档位给得多
+        if (S.fam0 >= 4 && !S.inh && a >= 35 && a < 60 && !(S.rtCd > a) && R() < 0.3) {
+          S.rtCd = a + 4;
+          const g = S.fam0 >= 6 ? 1.5 + 2 * R() : 0.4 + R();
+          S.money += g;
+          log(S.fam0 >= 6 ? `爸妈退休金高，年节红包从来不少。这一年，他们又补贴了你们 ${f1(g)} 万。` : `爸妈都有退休金，不用你养。逢年过节，他们还总往你卡里打钱，一年下来也有 ${f1(g)} 万。`, "warm");
+        }
         // 富二代挥霍
         if (t >= 5 && a >= 18 && a <= 30 && !S.seen.splurge && R() < 0.12) {
           S.seen.splurge = 1;
@@ -2326,6 +2339,17 @@
         modal("12 岁 · 小升初", `重点中学名额有限。你的把握约 ${P(p)}（知识 ${S.iq} · ${S.urban ? "城镇" : "农村"} · ${famLabel(S)}${S.xq ? " · 学区房加分" : ""}）`, [
           ["考重点中学", `把握约 ${P(p)}，没考上就读普通中学`, () => {
             if (R() < p) { S.school = "key"; S.joy += 6; kUp("Kb", 2); log("考进了重点中学。", "big"); }
+            else if (S.fam >= 5 || (S.fam >= 3 && S.famPot >= 8)) {
+              // 没考上但家里出得起：择校彩蛋
+              Q.unshift(() => modal("12 岁 · 差几分", `重点中学的线差了几分。${S.fam >= 5 ? "爸妈早就留了择校这条路。" : "爸妈咬了咬牙，说要给你想想办法。"}`, [
+                ["家里交择校费，上重点", S.fam >= 5 ? "花 5 万 · 爸妈出" : `花 ${Math.min(8, Math.floor(S.famPot)).toFixed(0)} 万 · 家里的积蓄`, () => {
+                  const c = potUse(S.fam >= 5 ? 5 : Math.min(8, S.famPot));
+                  S.school = "key"; S.joy += 4; kUp("Kb", 2);
+                  log(`爸妈托人交了 ${Math.round(c)} 万择校费，你进了重点中学。开学第一天，班主任念名单时，你坐在最后一排。`, "warm");
+                }],
+                ["认命，去片区普通中学", "路是自己走出来的", () => { S.school = "normal"; S.joy -= 4; log("差了几分，没考上重点中学，去了片区的普通中学。", "bad"); }],
+              ]));
+            }
             else { S.school = "normal"; S.joy -= 4; log("差了几分，没考上重点中学，去了片区的普通中学。", "bad"); }
           }],
           ["就近读普通中学", "压力小，幸福+4", () => { S.school = "normal"; S.joy += 4; log("就近上了普通中学，离家走路十分钟。"); }],
@@ -2338,6 +2362,17 @@
           ["冲重点中学高中部", `把握约 ${P(p)} · 高考加成 · 压力大`, () => {
             S.track = "high"; S.joy -= 5; kUp("Kb", 5);
             if (R() < p) { S.school = "key"; log(k ? "中考过线，留在了重点中学高中部。" : "中考逆袭，考进了重点中学高中部。", "big"); }
+            else if (S.fam >= 5 || (S.fam >= 3 && S.famPot >= 12)) {
+              // 没冲上但家里出得起：择校彩蛋
+              Q.unshift(() => modal("15 岁 · 差几分", `重点中学高中部的线差了几分。${S.fam >= 5 ? "爸妈早把择校费备好了。" : "爸妈商量了一晚上，说去求人。"}`, [
+                ["家里交择校费，借读重点", S.fam >= 5 ? "花 8 万 · 爸妈出" : `花 ${Math.min(12, Math.floor(S.famPot)).toFixed(0)} 万 · 家里的积蓄`, () => {
+                  const c = potUse(S.fam >= 5 ? 8 : Math.min(12, S.famPot));
+                  S.school = "key"; kUp("Kb", 3);
+                  log(`爸妈托关系交了 ${Math.round(c)} 万择校费，你以借读生的身份进了重点中学高中部。课间没人认识你，你就趴在桌上做题。`, "warm");
+                }],
+                ["认命，读普通中学高中部", "冲高考，压力小一些", () => { S.school = "normal"; log("差了几分，没冲上重点中学，读了普通中学高中部。", "bad"); }],
+              ]));
+            }
             else { S.school = "normal"; log("差了几分，没冲上重点中学，读了普通中学高中部。", "bad"); }
           }],
           ["读普通中学高中部", "冲高考，压力小一些", () => { S.track = "high"; S.school = "normal"; S.joy -= 2; kUp("Kb", 3); log("上了普通中学的高中部。"); }],
@@ -2371,7 +2406,20 @@
         let i = c.findIndex((v) => u < v); if (i < 0) i = 5;
         const [tier, edu] = TIERS[i];
         S.edu = edu; S.tierK = TIERK[tier] || 0;
-        if (tier === "落榜") { S.track = "grad"; S.uni = "高中毕业"; S.joy -= 12; log("高考落榜，分数线差了一截。拿着高中毕业证，开始找工作。", "bad"); return; }
+        if (tier === "落榜") {
+          // 家境好的家庭：落榜也有退路——出国读预科 / 复读 / 认命打工
+          const affA = (S.fam >= 4 || (S.fam === 3 && S.famPot >= 150)) && S.famPot >= abroadCost();
+          if (affA) {
+            Q.unshift(() => modal("18 岁 · 落榜之后", "分数线差了一截，你没考上。", [
+              ["家里安排出国读预科", `家里出约 ${Math.round(abroadCost())} 万 · 学历按 985 档算`, () => abroad()],
+              ["复读一年", "再拼一次", () => { S.retake = true; S.joy -= 10; log("决定复读一年。"); }],
+              ["认了，开始找工作", "拿着高中毕业证", () => { S.track = "grad"; S.uni = "高中毕业"; S.joy -= 12; log("高考落榜，分数线差了一截。拿着高中毕业证，开始找工作。", "bad"); }],
+            ]));
+          } else {
+            S.track = "grad"; S.uni = "高中毕业"; S.joy -= 12; log("高考落榜，分数线差了一截。拿着高中毕业证，开始找工作。", "bad");
+          }
+          return;
+        }
         S.uni = tier;
         const where = tier === "普通本科" || tier === "专科" ? rnd(["本省", "省内", "邻省"]) : rnd(AREA);
         log(`录取通知书来了：${where}某${rnd(UNI[tier])}（${tier}）`, i <= 3 ? "big" : "plain");

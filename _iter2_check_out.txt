@@ -1,0 +1,26 @@
+== 1. DAILY 池 ==
+PASS baby 池台词量已扩容 ≥200 字符
+PASS kid 池已扩容
+PASS teen 池已扩容
+== 2. 幼儿事件 ==
+PASS baby_walk 存在且年龄窗 0–6 岁
+PASS baby_ill 存在且年龄窗 0–6 岁
+PASS baby_toys 存在且年龄窗 0–6 岁
+PASS baby_family 存在且年龄窗 0–6 岁
+PASS baby_crawl 存在且年龄窗 0–6 岁
+PASS baby_market 存在且年龄窗 0–6 岁
+PASS baby_animal 存在且年龄窗 0–6 岁
+PASS baby_night 存在且年龄窗 0–6 岁
+PASS baby_neighbor 存在且年龄窗 0–6 岁
+PASS baby_photo 存在且年龄窗 0–6 岁
+== 3. 0–6 岁随机性 ==
+PASS 100 次模拟 0–6 岁平均触发 7.72 个幼儿事件（期望 ≥3）
+PASS 100/100 次至少触发 1 个（期望几乎必有）
+PASS 幼儿生病 77 次（存在但非必然）
+== 4. 富家落榜彩蛋 ==
+PASS 300 次富家高考中捕获到落榜三选彩蛋（ran=1）
+PASS 彩蛋选项含出国+复读
+PASS 穷家落榜直接高中毕业打工（无彩蛋）
+== 5. 小升初择校彩蛋 ==
+PASS 小升初落榜触发择校弹窗
+PASS 彩蛋选项含择校费
