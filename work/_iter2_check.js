@@ -79,7 +79,7 @@ out.push("== 4. 富家落榜彩蛋 ==");
   const s = T.getS();
   // 覆盖成富家、18 岁、高家底，确保够出国
   s.age = 18; s.fam = 5; s.fam0 = 4; s.famPot = 300; s.track = "high"; s.retake = false;
-  s.iq = 50; s.urban = 1; s.school = "key"; s.p = { t: 1 }; s.parEdu = 0; s.famPct = 60; s.xq = 0;
+  s.iq = 1; s.urban = 1; s.school = "key"; s.p = { t: 1 }; s.parEdu = 0; s.famPct = 60; s.xq = 0;
   s.joy = 50; s.hp = 80; s.money = 10; s.uni = ""; s.tierK = 0; s.edu = 1; s.src = ""; s.intl = 0; s.ky = 0;
   let modalTitle = "", modalOpts = [];
   T.stubModal((t, sub, opts) => { modalTitle = t; modalOpts = (opts || []).map((o) => o[0]); });
@@ -99,7 +99,7 @@ out.push("== 4. 富家落榜彩蛋 ==");
     ok(modalOpts.includes("家里安排出国读预科") && modalOpts.includes("复读一年"), "彩蛋选项含出国+复读");
   }
   // 穷家落榜不弹彩蛋直接打工
-  s.fam = 0; s.fam0 = 0; s.famPot = 0; s.retake = false; s.track = "high"; s.uni = ""; s.tierK = 0; s.edu = 1;
+  s.fam = 0; s.fam0 = 0; s.famPot = 0; s.retake = false; s.track = "high"; s.uni = ""; s.tierK = 0; s.edu = 1; s.iq = 1;
   T.clearQ(); modalTitle = ""; let gradSeen = false;
   for (let i = 0; i < 300; i++) {
     s.retake = false; s.track = "high"; s.uni = ""; s.tierK = 0; s.edu = 1;
