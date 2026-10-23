@@ -4,11 +4,11 @@ PASS 带债组合 → 240
 PASS 纯负债 → -80
 == B. inherit ==
 PASS 穷家庭无遗产可继
-PASS 中产继承总值=现金+房净值 → money=55.809115657167766 famCap=55.809115657167766 inhProp=86.19088434283223 inhDebt=0
+PASS 中产继承总值=现金+房净值 → money=78.83260763327104 famCap=78.83260763327104 inhProp=63.16739236672897 inhDebt=0
 PASS 继承负债不越界（可略超=负资产）
 == C. STORY 事件年循环 ==
-穷档 L1：年数 60 · 事件错误 0 · 出生动画(stub限制) Cannot read properties of undefined (rea · 日志 72 条 · 含结婚事件 / 无父母病 / 存款=-18
-中档 L3：年数 60 · 事件错误 0 · 出生动画(stub限制) Cannot read properties of undefined (rea · 日志 76 条 · 含结婚事件 / 无父母病 / 存款=-31
-富档 L7：年数 60 · 事件错误 0 · 出生动画(stub限制) Cannot read properties of undefined (rea · 日志 71 条 · 含结婚事件 / 无父母病 / 存款=-10
+穷档 L1：年数 60 · 事件错误 0 · 出生动画(stub限制) Cannot read properties of undefined (rea · 日志 76 条 · 含结婚事件 / 无父母病 / 存款=-39
+中档 L3：年数 60 · 事件错误 0 · 出生动画(stub限制) Cannot read properties of undefined (rea · 日志 72 条 · 含结婚事件 / 无父母病 / 存款=-18
+富档 L7：年数 60 · 事件错误 0 · 出生动画(stub限制) Cannot read properties of undefined (rea · 日志 73 条 · 含结婚事件 / 无父母病 / 存款=-11
 == D. render 财富总额显示 ==
-PASS l-money 含财富总额 → 存款  100.0  万 · 年收入  0.0  万 财富总额 约 407 万 
+PASS l-money 含财富总额 → 存款  100.0  万 · 年收入  0.0  万 财富总额 约 407 万  构成：现金  100.0 万  · 不动产 自购房 106.7 万 · 赠予房

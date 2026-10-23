@@ -3,3 +3,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 _shots*/
+
+_backup/
+work/
+

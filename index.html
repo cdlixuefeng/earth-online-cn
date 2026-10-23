@@ -183,6 +183,7 @@
       .x-money.is-debt b:first-child { color: var(--fill-system-red); }
       .x-money .x-money__w { display: block; margin-top: 2px; font-size: 11px; color: var(--ink-3); }
       .x-money .x-money__w b { color: var(--ink-2); }
+      .x-money .x-money__b { font-size: 10px; color: var(--ink-3); line-height: 1.35; white-space: normal; }
       .x-bars { display: grid; gap: 10px; }
       .x-meta .x-bars { gap: 2px; }
       .x-bar { display: grid; grid-template-columns: 2.4em 1fr 1.8em; align-items: center; gap: 8px; font: 12px/1.15 var(--serif); }
@@ -361,8 +362,50 @@
       .x-hl ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
       .x-hl li { padding: 8px 0 8px 14px; border-left: 2px solid var(--line); font: 400 16px/1.5 var(--serif); color: var(--ink); }
       .x-hl__n { margin: 12px 0 0; font: var(--type-small); color: var(--ink-2); text-align: center; }
+      /* 结局 · 碑文饰线 */
+      .x-epi__rule { display: flex; align-items: center; gap: 10px; width: min(230px, 72%); margin: 0 auto; }
+      .x-epi__rule::before, .x-epi__rule::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+      .x-epi__rule i { width: 6px; height: 6px; background: var(--seal); transform: rotate(45deg); flex: none; }
+      .x-epi__rule:first-of-type { margin-bottom: 16px; }
+      .x-epi__rule:last-of-type { margin-top: 18px; }
+      /* 结局 · 一生胶片 */
+      .x-film { text-align: center; }
+      .x-film__row { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; justify-content: center; }
+      .x-film .x-av { width: 92px; height: 92px; margin: 0; }
+      .x-film__now { margin: 0; display: grid; place-items: center; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--paper); padding: 8px; }
+      .x-film .x-snaps { flex-wrap: nowrap; justify-content: flex-start; gap: 8px; overflow-x: auto; padding: 16px 4px 6px; }
+      .x-film .x-snaps figure { position: relative; flex: none; display: grid; justify-items: center; gap: 3px; padding: 12px 8px 6px; border: 1px solid var(--line-soft); border-radius: 4px; background: var(--paper); }
+      .x-film .x-snaps figure::before { content: attr(data-year); position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font: 500 9px/1 var(--sans); color: var(--ink-2); background: var(--bg); padding: 0 5px; }
+      .x-film .x-snaps svg { width: 50px; height: 50px; }
+      /* 结局 · 人生档案 */
+      .x-arch .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 auto; max-width: 620px; }
+      .x-arch .stat { flex: 1 1 0; min-width: 96px; display: grid; gap: 7px; padding: 14px 6px 12px; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--paper); text-align: center; }
+      .x-arch .stat__fig { font: 600 clamp(22px, 5.5vw, 30px)/1.1 var(--serif); color: var(--ink); }
+      .x-arch .stat__label { font: var(--type-caption); color: var(--ink-2); }
+      .x-arch .stat--wide { flex: 0 0 100%; }
+      /* 结局 · 出身阶梯 */
+      .x-climb { text-align: center; }
+      .x-climb__bar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; max-width: 620px; margin: 0 auto; }
+      .x-climb__bar i { position: relative; height: 30px; border: 1px solid var(--line-soft); border-radius: 3px; background: var(--paper); }
+      .x-climb__bar i em { position: absolute; inset: 0; display: grid; place-items: center; font: 500 10px/1 var(--sans); color: var(--ink-2); }
+      .x-climb__bar i.is-seg { background: color-mix(in srgb, var(--climb-c, var(--warm)) 26%, var(--paper)); border-color: color-mix(in srgb, var(--climb-c, var(--warm)) 55%, var(--line)); }
+      .x-climb__bar i.is-from, .x-climb__bar i.is-to { border-width: 2px; }
+      .x-climb__bar i.is-from { border-color: var(--ink); }
+      .x-climb__bar i.is-from em { color: var(--ink); }
+      .x-climb__bar i.is-to { border-color: var(--climb-c, var(--seal)); background: color-mix(in srgb, var(--climb-c, var(--seal)) 32%, var(--paper)); }
+      .x-climb__bar i.is-to em { color: var(--climb-c, var(--seal)); font-weight: 700; }
+      .x-climb__verdict { margin: 12px auto 0; max-width: 34em; font: 400 15px/1.7 var(--serif); color: var(--ink-2); }
+      .x-climb__verdict b { color: var(--ink); font-weight: 600; }
+      /* 结局 · 轨迹行 */
+      .x-trail { margin: 0 auto; max-width: 40em; font: var(--type-small); color: var(--ink-2); text-align: center; }
       /* 家庭卡：手机上一屏放下（375×667） */
       @media (max-width: 600px) {
+        .x-film__row { grid-template-columns: 1fr; gap: 10px; }
+        .x-film .x-av { width: 84px; height: 84px; }
+        .x-arch .stats { gap: 8px; }
+        .x-arch .stat { flex-basis: calc(50% - 4px); min-width: 0; }
+        .x-climb__bar i { height: 26px; }
+        .x-epi__rule { width: 82%; }
         .x-fam { padding-block: 8px 16px; }
         .x-fam .head { gap: 2px; margin-bottom: 8px; }
         .x-fam .head h2 { font-size: 22px; }
@@ -520,22 +563,43 @@
         <!-- 结局 -->
         <section class="section x-screen" id="s-end" hidden>
           <div class="head"><p class="head__eyebrow">地球 online（国服公测版）· 一生结束</p><h2 id="e-title"></h2></div>
-          <div class="x-rv x-epi" data-step="0"><p class="x-end-lbl">墓志铭</p><p class="x-epi__t" id="e-epi"></p><p class="x-epi__q" id="e-epiq" hidden></p></div>
+          <!-- 碑文 -->
+          <div class="x-rv x-epi" data-step="0">
+            <span class="x-epi__rule" aria-hidden="true"><i></i></span>
+            <p class="x-end-lbl">墓志铭</p>
+            <p class="x-epi__t" id="e-epi"></p>
+            <p class="x-epi__q" id="e-epiq" hidden></p>
+            <span class="x-epi__rule" aria-hidden="true"><i></i></span>
+          </div>
+          <!-- 人生签：盖棺定论 -->
           <div class="x-rv" data-step="1"><div class="x-slip"><p class="x-end-lbl">人生签</p><p class="x-slip__sign" id="e-sign"></p><p class="x-slip__verse" id="e-verse"></p></div></div>
-          <div class="x-rv x-hl" data-step="2"><p class="x-end-lbl">这一生的高光</p><ul id="e-hl"></ul><p class="x-hl__n" id="e-stories"></p></div>
-          <div class="x-av x-rv" data-step="3" id="e-av"></div>
-          <div class="x-snaps x-rv" data-step="3" id="e-snaps" aria-label="各阶段的样子"></div>
-          <section class="stats x-rv" data-step="3">
-            <div class="stat"><span class="stat__fig" id="e-age"></span><span class="stat__label">享年</span></div>
-            <div class="stat"><span class="stat__fig" id="e-inc"></span><span class="stat__label">一生总收入</span></div>
+          <!-- 一生胶片 -->
+          <div class="x-rv x-film" data-step="2">
+            <p class="x-end-lbl">这一生</p>
+            <div class="x-film__row">
+              <figure class="x-film__now" id="e-av"></figure>
+              <div class="x-snaps" id="e-snaps" aria-label="各阶段的样子"></div>
+            </div>
+          </div>
+          <!-- 人生档案 -->
+          <section class="x-rv x-arch" data-step="2">
+            <p class="x-end-lbl">人生档案</p>
+            <div class="stats">
+              <div class="stat"><span class="stat__fig" id="e-age"></span><span class="stat__label">享年</span></div>
+              <div class="stat"><span class="stat__fig" id="e-inc"></span><span class="stat__label">一生总收入</span></div>
+              <div class="stat"><span class="stat__fig" id="e-peak"></span><span class="stat__label">存款最高</span></div>
+              <div class="stat"><span class="stat__fig" id="e-low"></span><span class="stat__label">最低点</span></div>
+              <div class="stat stat--wide"><span class="stat__fig" id="e-net"></span><span class="stat__label">最终净资产（含房产）</span></div>
+            </div>
           </section>
-          <section class="stats x-rv" data-step="3">
-            <div class="stat"><span class="stat__fig" id="e-peak"></span><span class="stat__label">存款最高</span></div>
-            <div class="stat"><span class="stat__fig" id="e-low"></span><span class="stat__label">最低点</span></div>
-            <div class="stat"><span class="stat__fig" id="e-net"></span><span class="stat__label">最终净资产（含房产）</span></div>
-          </section>
-          <p class="x-big x-rv" data-step="3" id="e-where" style="font: var(--type-heading)"></p>
-          <p class="x-rv" data-step="3" id="e-fam" style="font: var(--type-body); color: var(--ink-2); margin: 0"></p>
+          <!-- 与父母那一代：十级阶梯 -->
+          <div class="x-rv x-climb" data-step="3">
+            <p class="x-end-lbl">与父母那一代</p>
+            <div class="x-climb__bar" id="e-ladder"></div>
+            <p class="x-climb__verdict" id="e-fam"></p>
+          </div>
+          <div class="x-rv x-hl" data-step="3"><p class="x-end-lbl">这一生的高光</p><ul id="e-hl"></ul><p class="x-hl__n" id="e-stories"></p></div>
+          <p class="x-rv x-trail" data-step="3" id="e-where"></p>
           <div class="links x-rv" data-step="3"><button class="btn" id="b-again">重新投胎</button><button class="btn" id="b-share">分享这一生</button></div>
         </section>
       </main>
@@ -811,6 +875,13 @@
         return (s.money || 0) + hv + fp + ip + (s.famCap || 0) + (s.trust ? s.trust * 20 : 0);
       };
       const worthTxt = (v) => (v >= 10000 ? `约 ${+(v / 10000).toFixed(1)} 亿` : v >= 1000 ? `约 ${+(v / 1000).toFixed(1)} 千万` : v < 0 ? `−${Math.abs(Math.round(v))} 万` : `约 ${Math.round(v)} 万`);
+      // 财富构成（万元）：现金（存款+继承现金）/ 不动产（自购房净值 / 赠予房净值 / 继承房净值，均可为负）/ 信托现值（年分红×20 资本化）
+      const worthParts = (s) => {
+        const hs = s.house, hv = hs ? hs.P - hs.P * 0.7 * hs.left / 30 : 0;
+        const fp = (s.famProp || 0) - (s.famPropDebt || 0), ip = (s.inhProp || 0) - (s.inhDebt || 0);
+        return { cash: (s.money || 0) + (s.famCap || 0), house: hv, gift: fp, inherit: ip, trust: s.trust ? s.trust * 20 : 0 };
+      };
+      const wf = (v) => (v < 0 ? "−" : "") + Math.abs(Math.round(v * 10) / 10).toFixed(1) + " 万";
       const $ = (id) => document.getElementById(id);
       const rnd = (a) => a[Math.floor(Math.random() * a.length)];
       const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
@@ -1460,7 +1531,14 @@
         $("l-who").textContent = who; $("l-who").title = who;
         $("l-year").textContent = "· " + (S.y0 + S.age);
         const m = S.money, d = S.dy, lm = $("l-money"), wv = worthOf(S);
-        lm.innerHTML = `${m < 0 ? "负债" : "存款"} <b>${Math.abs(m).toFixed(1)}</b> 万${d != null ? `（${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}）` : ""} · 年收入 <b>${(S.yinc || 0).toFixed(1)}</b> 万<span class="x-money__w">财富总额 ${worthTxt(wv)}</span>`;
+        const wp = worthParts(S), wbits = [`现金 <b>${wf(wp.cash)}</b>`];
+        const props = [];
+        if (wp.house) props.push(`自购房 ${wf(wp.house)}`);
+        if (wp.gift) props.push(`赠予房 ${wf(wp.gift)}`);
+        if (wp.inherit) props.push(`继承房 ${wf(wp.inherit)}`);
+        if (props.length) wbits.push(`不动产 ${props.join(" · ")}`);
+        if (wp.trust) wbits.push(`信托 ${wf(wp.trust)}`);
+        lm.innerHTML = `${m < 0 ? "负债" : "存款"} <b>${Math.abs(m).toFixed(1)}</b> 万${d != null ? `（${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}）` : ""} · 年收入 <b>${(S.yinc || 0).toFixed(1)}</b> 万<span class="x-money__w">财富总额 ${worthTxt(wv)}</span><span class="x-money__w x-money__b">构成：${wbits.join(" · ")}</span>`;
         lm.classList.toggle("is-debt", m < 0);
         renderFocus();
         $("bars").innerHTML = [["健康", S.hp], ["幸福", S.joy], ["知识", S.iq], ["人情", S.rel]]
@@ -2121,6 +2199,7 @@
         S.joy += (S.jb - S.joy) * 0.2 + (Math.random() * 4 - 2);
         S.hp += x.hp || 0; S.joy += x.joy || 0;
         S.hp = clamp(S.hp); S.joy = clamp(S.joy);
+        if (S.hp <= 0) { log(`病入膏肓，${S.age} 岁这年没能撑过去。`, "bad"); return die(); } // 健康归零立即去世
         const q = (Q = []);
         STORY.year(S, { log, modal, moment, kfx, rel: relAdd, q: (f) => Q.push(f) });
         const line = S.last;
@@ -2377,12 +2456,22 @@
           $("e-net").style.color = net < 0 ? "var(--fill-system-red)" : "";
           $("e-low").style.color = S.low < 0 ? "var(--fill-system-red)" : "";
           $("e-av").innerHTML = drawAvatar(S);
-          $("e-snaps").innerHTML = S.snaps.map((v, i) => (v ? `<figure>${v.svg}<figcaption>${STG[i]} · ${v.age} 岁</figcaption></figure>` : "")).join("");
+          $("e-snaps").innerHTML = S.snaps.map((v, i) => (v ? `<figure data-year="${S.y0 + v.age}">${v.svg}<figcaption>${STG[i]} · ${v.age} 岁</figcaption></figure>` : "")).join("");
           $("e-where").textContent = `${S.p.n} · ${huji(S)}${S.age >= 18 ? " · " + tierName() : eduTag() ? " · " + eduTag() : ""} · 预期寿命 ${S.le} 岁`;
           // 出身对比：最终净资产（万）折成同一把十级尺子：分界 6 · 50 · 185 · 420 · 600 · 1000 · 1 亿 · 5 亿 · 20 亿
           const myT = [6, 50, 185, 420, 600, 1000, 10000, 50000, 200000].filter((v) => net >= v).length, dT = myT - S.fam0, cn = ["", "一", "两", "三", "四", "五", "六", "七", "八", "九"][Math.abs(dT)];
           S.netEnd = net;
-          $("e-fam").textContent = `出身：第 ${S.fam0 + 1} 级 · ${famShow(S, S.fam0)}${S.src ? ` · 家底：${srcTxt(S)}` : ""} · 最终净资产约相当于「第 ${myT + 1} 级 · ${famLabel(S, myT)}」，${dT > 0 ? `比父母那一代往上走了${cn}级` : dT === 0 ? "守住了" : `比父母那一代往下走了${cn}级`}。`;
+          // 出身 → 终局：十级阶梯（上升暖色 / 守住墨色 / 下落冷色）
+          const climb = $("e-ladder");
+          climb.style.setProperty("--climb-c", dT > 0 ? "var(--warm)" : dT < 0 ? "var(--bad)" : "var(--ink)");
+          let seg = "";
+          for (let i = 0; i < 10; i++) {
+            const inSeg = dT !== 0 && ((dT > 0 && i > S.fam0 && i <= myT) || (dT < 0 && i < S.fam0 && i >= myT));
+            const mark = i === S.fam0 && i === myT ? "守" : i === S.fam0 ? "出" : i === myT ? "终" : i + 1;
+            seg += `<i class="${i === S.fam0 ? "is-from" : ""}${i === myT ? " is-to" : ""}${inSeg ? " is-seg" : ""}"><em>${mark}</em></i>`;
+          }
+          climb.innerHTML = seg;
+          $("e-fam").innerHTML = `出身第 <b>${S.fam0 + 1}</b> 级 · ${famShow(S, S.fam0)}${S.src ? ` · 家底：${srcTxt(S)}` : ""} · 最终净资产约相当于第 <b>${myT + 1}</b> 级 · ${famLabel(S, myT)}，${dT > 0 ? `比父母那一代<b>往上走了${cn}级</b>` : dT === 0 ? "<b>守住了</b>" : `比父母那一代<b>往下走了${cn}级</b>`}。`;
           const E = STORY.ending(S), hl = E.highlights || [], end = $("s-end");
           S.shareTxt = `我在「地球 online（国服公测版）」投胎到${place(S)}的${famShow(S, S.fam0)}（第 ${decOf(S.fam0)} 级${S.src && S.src !== "dual" ? " · " + srcTag(S) : ""}），活到 ${S.age} 岁，一生收入 ${Math.round(S.inc)} 万。墓志铭：${E.epitaph}`;
           $("e-epi").textContent = E.epitaph;
@@ -2399,6 +2488,64 @@
           show("s-end");
           window._endT = [0, 1, 2, 3].map((i) => setTimeout(() => rv.forEach((el) => { if (+el.dataset.step === i) el.classList.add("is-in"); }), 150 + i * gap));
         }, 900);
+      }
+      // ===== 示例人生 · 结局预览：URL 带 ?demo=end 时，直接虚拟一段完整人生并展示结局设计（不参与正常游玩流程）=====
+      if (typeof location !== "undefined" && /[?&]demo=end\b/.test(location.search)) {
+        (function demoEnd() {
+          const R = Math.random, pick = (a) => a[Math.floor(R() * a.length)];
+          // 复用真实出生抽签：省份按出生权重，性别 × 城乡按真实比例
+          const p = weighted(), { urban, male } = drawBirth(p);
+          const name = pick(SUR) + pick(male ? MALE : FEM) + (R() < 0.6 ? pick(male ? MALE : FEM) : "");
+          const le = +(p.le + (urban ? 2 : -2)).toFixed(1);
+          S = { p, urban, male, name, le, a: solveA(le), age: 0, hp: 85, joy: 70, jb: 45 + R() * 25, iq: 30, money: 0, inc: 0, track: "", edu: 1, job: 1, retake: false,
+            sit: "work", loc: urban ? "prov" : "rural", lvl: R(), cut: 1, kids: [], house: null, inv: "", peak: 0, low: 0, dy: null,
+            chai: urban ? R() < 0.12 : p.t <= 2 && R() < 0.4, rel: 60, pick: "均衡", focus: "", fx: {}, wed: 0, date: 0, school: "", uni: "", tierK: 0, ky: 0, ez: 0,
+            famPropDebt: 0, inhProp: 0, inhDebt: 0 };
+          drawFam(S);
+          S.pf = FLV[p.n] || {}; S.jb += S.pf.joy || 0;
+          S.xq = urban && R() < [0.01, 0.073, 0.26, 0.495, 0.571, 0.62, 0.66, 0.7, 0.7, 0.7][S.fam];
+          const nz = Math.sqrt(-2 * Math.log(1 - R())) * Math.cos(2 * Math.PI * R());
+          S.apt = Math.max(0.75, Math.min(1.25, 1 + 0.1 * nz)) + (urban ? 0.03 : 0) + [-0.02, 0, 0.02, 0.04][S.parEdu] + (S.xq ? 0.03 : 0) + (S.src === "pro" ? 0.03 : 0);
+          S.Kb = S.Ka = S.KbPeak = S.iq;
+          const nl = Math.sqrt(-2 * Math.log(1 - R())) * Math.cos(2 * Math.PI * R());
+          S.luck = Math.exp(1.1 * Math.max(-2.5, Math.min(2.5, nl)));
+          S.Rf = 50 + 15 * R(); S.Rp = 40 + 15 * R(); S.Rw = 0; S.G = 0; relSync();
+          const ns = Math.sqrt(-2 * Math.log(1 - R())) * Math.cos(2 * Math.PI * R());
+          S.soc = Math.max(-2, Math.min(3, 0.5 + ns));
+          STORY.init(S);
+          S.g = { face: Math.floor(R() * 4), skin: Math.floor(R() * 4), hair: Math.floor(R() * 4), mark: R() < 0.45 ? (R() < 0.5 ? 1 : 2) : 0 };
+          // 虚拟一生：1944 年出生，享年 82，超过预期寿命
+          S.y0 = new Date().getFullYear() - 82;
+          S.age = 82; S.tags = new Set(); S.lt = null;
+          S.juan = 7; S.study = 4; S.wt = 2; S.seen = {}; S.snaps = []; S.yinc = 0;
+          S.track = "high"; S.edu = 4; S.uni = "985"; S.tierK = 4; S.ky = 1; S.school = "key";
+          S.sit = "white"; S.job = 1.6; S.lvl = 1; S.cut = 1; S.loc = "prov"; S.xb = 1;
+          S.hp = 52; S.joy = 68; S.iq = 55; S.rel = 72;
+          S.money = 42; S.famCap = 18;                    // 现金 42 + 继承现金 18
+          S.house = { P: 240, left: 6 };                  // 自购房 240 万，还剩 6 年贷款
+          S.famProp = 88; S.famPropDebt = 12;             // 父母支持的婚房净值 88 − 借款 12
+          S.inhProp = 120; S.inhDebt = 40;                // 继承的房 120 − 继承的债 40
+          S.trust = 5;                                    // 信托年分红 5 万，按 20 倍资本化 = 100 万
+          S.inc = 198; S.peak = 305; S.low = -3;
+          S.fam0 = 1; S.fam = 1; S.src = null; S.srcSub = null;   // 出身第 2 级（困难家庭），最终约第 5 级 → 上升
+          S.done = { kind_callback: 1, o_lottery_win: 1 };
+          S.N = { kids: [{ uni: "985" }], bff: { n: "阿山" }, partner: { n: "小芸", wed: 1, letter: { line: "把日子过成彼此的样子。" } }, exes: [] };
+          S.F = { promos: 3, gotLetter: 1, kindDesk: 1, caredParent: 1, dog: 1, ptmGo: 1 };
+          S.story = 42;
+          // 六张阶段头像：婴儿 → 儿童 → 少年 → 青年 → 中年 → 老年
+          [[0, 0, 0, 60, 85], [8, 0, 0, 65, 88], [16, 1, 0, 70, 90], [30, 3, 0, 75, 82], [48, 5, 1, 72, 64], [76, 7, 2, 68, 52]].forEach(([a, j, w, jy, hp2]) => {
+            S.age = a; S.juan = j; S.wt = w; S.joy = jy; S.hp = hp2;
+            S.snaps.push({ age: a, svg: drawAvatar(S) });
+          });
+          S.age = 82; S.juan = 7; S.wt = 2; S.joy = 68; S.hp = 52;
+          document.documentElement.classList.remove("is-ended");
+          show("s-life"); $("feed").innerHTML = ""; $("today").innerHTML = ""; delete $("l-av").dataset.st; delete $("focus").dataset.k;
+          paused = false; blocked = false; skipping = false; mult = 1; Q = [];
+          keys(); render();
+          log(SAR(S.p) ? `${S.name}出生在${S.p.n}的一个${famShow(S)}。` : `${S.name}出生在${S.p.n}的${S.urban ? "城镇" : "农村"}家庭 · ${famShow(S)}。`, "big");
+          log("这是一段示例人生（?demo=end）：为了让结局设计完整展示数据，直接虚拟到 82 岁。", "plain");
+          die();
+        })();
       }
     </script>
     <script>
