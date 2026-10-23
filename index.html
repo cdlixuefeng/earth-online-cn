@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>地球 online（国服公测版）</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='26' fill='%232D6CDF'/%3E%3Cellipse cx='32' cy='32' rx='26' ry='10' fill='none' stroke='white' stroke-width='3'/%3E%3Cpath d='M6 32h52M32 6v52' stroke='white' stroke-width='3'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -180,6 +181,8 @@
       .x-money { margin: 0; font: 12px/1.3 var(--sans); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .x-money b { font-weight: var(--weight-medium); color: var(--ink); }
       .x-money.is-debt b:first-child { color: var(--fill-system-red); }
+      .x-money .x-money__w { display: block; margin-top: 2px; font-size: 11px; color: var(--ink-3); }
+      .x-money .x-money__w b { color: var(--ink-2); }
       .x-bars { display: grid; gap: 10px; }
       .x-meta .x-bars { gap: 2px; }
       .x-bar { display: grid; grid-template-columns: 2.4em 1fr 1.8em; align-items: center; gap: 8px; font: 12px/1.15 var(--serif); }
@@ -654,9 +657,9 @@
       // 收入 → 全国百分位（DEC_P 的反函数）
       const pctOf = (v) => { if (v <= DEC_P[0][1]) return 0; for (let i = 1; i < DEC_P.length; i++) { const [q0, v0] = DEC_P[i - 1], [q1, v1] = DEC_P[i]; if (v <= v1) return q0 + ((q1 - q0) * Math.log(v / v0)) / Math.log(v1 / v0); } return 99.9999; };
       const invPhi = (u) => { let lo = -ZM, hi = ZM; for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; Phi(m) < u ? (lo = m) : (hi = m); } return (lo + hi) / 2; };
-      // 每 10,000 个：整数，千分位；不到 1 个写成“每 N 万个约 1 个”
-      const per1w = (v) => { const x = v * 1e4; if (x >= 1) return `约 <b>${Math.round(x).toLocaleString("en-US")}</b> 个`; if (x < 1e-4) return "不到 <b>1</b> 个（不到亿分之一）"; const n = 1 / x; return `不到 <b>1</b> 个（每 ${(n >= 10 ? Math.round(n) : +n.toFixed(1)).toLocaleString("en-US")} 万个约 1 个）`; };
-      const per1wN = (v) => (v * 1e4 < 1 ? "不到 <b>1</b> 个" : `<b>${Math.round(v * 1e4).toLocaleString("en-US")}</b> 个`);
+      // 每 100,000 个：整数，千分位；不到 1 个写成“每 N 十万个约 1 个”
+      const per1w = (v) => { const x = v * 1e5; if (x >= 1) return `约 <b>${Math.round(x).toLocaleString("en-US")}</b> 个`; if (x < 1e-4) return "不到 <b>1</b> 个（不到十亿分之一）"; const n = 1 / x; return `不到 <b>1</b> 个（每 ${(n >= 10 ? Math.round(n) : +n.toFixed(1)).toLocaleString("en-US")} 十万个约 1 个）`; };
+      const per1wN = (v) => (v * 1e5 < 1 ? "不到 <b>1</b> 个" : `<b>${Math.round(v * 1e5).toLocaleString("en-US")}</b> 个`);
       // 级 → 第几级（1–10）
       const decOf = (t) => t + 1;
       // 父母学历 S.parEdu：0 初中及以下 · 1 高中中专 · 2 大专本科 · 3 高知；按级条件抽（七普大专+约 15.5%，新生儿父母更年轻，约四成）
@@ -798,6 +801,13 @@
       };
       const pf = (k, d = 1) => (S && S.pf && S.pf[k] != null ? S.pf[k] : d);
       const assetTxt = (v) => (v >= 10000 ? `约 ${+(v / 10000).toFixed(1)} 亿` : v >= 1000 ? `约 ${+(v / 1000).toFixed(1)} 千万` : `约 ${Math.round(v / 10) * 10} 万`);
+      // 财富总额（万元）：现金存款（可为负）+ 自购房净资产（市值−未还房贷）+ 赠予房产净资产 + 继承不动产净资产 + 继承现金 + 信托现值（年分红×20 资本化）
+      const worthOf = (s) => {
+        const hs = s.house, hv = hs ? hs.P - hs.P * 0.7 * hs.left / 30 : 0;
+        const fp = (s.famProp || 0) - (s.famPropDebt || 0), ip = (s.inhProp || 0) - (s.inhDebt || 0);
+        return (s.money || 0) + hv + fp + ip + (s.famCap || 0) + (s.trust ? s.trust * 20 : 0);
+      };
+      const worthTxt = (v) => (v >= 10000 ? `约 ${+(v / 10000).toFixed(1)} 亿` : v >= 1000 ? `约 ${+(v / 1000).toFixed(1)} 千万` : v < 0 ? `−${Math.abs(Math.round(v))} 万` : `约 ${Math.round(v)} 万`);
       const $ = (id) => document.getElementById(id);
       const rnd = (a) => a[Math.floor(Math.random() * a.length)];
       const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
@@ -1054,9 +1064,9 @@
         const who = (SAR(p) ? "" : urban ? "城镇" : "农村") + (male ? "男孩" : "女孩");
         const ur = (SAR(p) ? `${p.n}全部是城镇人口；出生性别比约 ${srb(p)}。`
           : `城镇化率 ${p.u}%；农村生得多些，城镇新生儿约占 ${Math.round(uOf(p) * 100)}%。出生性别比约 ${Math.round(srb(p) * 10) / 10}。`)
-          + `生在${p.n}的${who}：每 10,000 个中国新生儿里${per1w(W)}。`;
+          + `生在${p.n}的${who}：每 100,000 个中国新生儿里${per1w(W)}。`;
         return `<h4>你出生在这里的机会</h4>
-          <p>每 10,000 个中国新生儿里，${per1w(X)}出生在${p.n}。</p>
+          <p>每 100,000 个中国新生儿里，${per1w(X)}出生在${p.n}。</p>
           <p>${p.n}出生率 <b>${p.br.toFixed(2)}‰</b>，全国 ${CN.br.toFixed(2)}‰ · 第 ${p.rank} / ${PROV.length}</p>
           <div class="x-cmp" role="img" aria-label="${p.n}出生率 ${p.br}‰，全国 ${CN.br}‰">${bar(p.n, p.br, 1)}${bar("全国", CN.br)}</div>
           <p>${ur}</p>${FLV[p.n] ? `
@@ -1106,7 +1116,8 @@
         const le = +(p.le + (urban ? 2 : -2)).toFixed(1);
         S = { p, urban, male, name, le, a: solveA(le), age: 0, hp: 85, joy: 70, jb: 45 + Math.random() * 25, iq: 30, money: 0, inc: 0, track: "", edu: 1, job: 1, retake: false,
           sit: "work", loc: urban ? "prov" : "rural", lvl: Math.random(), cut: 1, kids: [], house: null, inv: "", peak: 0, low: 0, dy: null,
-          chai: urban ? Math.random() < 0.12 : p.t <= 2 && Math.random() < 0.4, rel: 60, pick: "均衡", focus: "", fx: {}, wed: 0, date: 0, school: "", uni: "", tierK: 0, ky: 0, ez: 0 };
+          chai: urban ? Math.random() < 0.12 : p.t <= 2 && Math.random() < 0.4, rel: 60, pick: "均衡", focus: "", fx: {}, wed: 0, date: 0, school: "", uni: "", tierK: 0, ky: 0, ez: 0,
+          famPropDebt: 0, inhProp: 0, inhDebt: 0 };
         // 家庭背景：在省份、城乡之后抽（famDist）；学区房只在城镇，看家里的钱
         drawFam(S);
         S.pf = FLV[p.n] || {}; S.jb += S.pf.joy || 0;
@@ -1135,7 +1146,7 @@
           // 第二步：性别 × 城乡，四格按真实比例跳（港澳没有城乡之分，只分男孩女孩）
           const res = $("d-res"), cs = birthCells(p);
           $("d-title").textContent = "男孩还是女孩？城镇还是农村？";
-          res.innerHTML = `<span class="x-ur__cap">每 10,000 个${p.n}新生儿里约</span>` + cs.map(([cu, cm, w]) => `<span class="x-ur">${SAR(p) ? "" : cu ? "城镇" : "农村"}${cm ? "男孩" : "女孩"} ${per1wN(w)}</span>`).join("");
+          res.innerHTML = `<span class="x-ur__cap">每 100,000 个${p.n}新生儿里约</span>` + cs.map(([cu, cm, w]) => `<span class="x-ur">${SAR(p) ? "" : cu ? "城镇" : "农村"}${cm ? "男孩" : "女孩"} ${per1wN(w)}</span>`).join("");
           const u = [...res.querySelectorAll(".x-ur")], me = u[cs.findIndex((c) => !!c[0] === urban && !!c[1] === male)];
           const who = (SAR(p) ? "" : urban ? "城镇" : "农村") + (male ? "男孩" : "女孩");
           const endC = rollHint(res, [SAR(p) ? "正在随机性别…" : "正在随机性别和城乡…"]);
@@ -1178,7 +1189,7 @@
         // 这一级有多常见：全国份额（目标份额）vs 这个省 + 城乡的条件概率 P(级 | 省, 城乡)——抽签用的就是它
         const lo = famDist(S.p, S.urban)[t];
         const help = t === 0 ? "家里能帮你的不多：上学、买房、结婚，多半要靠自己。" : t === 1 ? "家里能帮一点，大事还得自己扛。" : t === 2 ? "家里能在关键时刻托你一把。" : t === 3 ? "补习、首付、找工作，家里都帮得上。" : t <= 6 ? "学区、首付、创业本钱、退路，家里都有。" : "家族集团、家族办公室、私人飞机，你的人生从起跑线之外开始。";
-        $("f-odds").innerHTML = `<div class="x-odds__two"><p>全国：每 10,000 个家庭${per1w(F.sh)}</p><p>在${place(S)}：每 10,000 个新生儿${per1w(lo)}</p></div>
+        $("f-odds").innerHTML = `<div class="x-odds__two"><p>全国：每 100,000 个家庭${per1w(F.sh)}</p><p>在${place(S)}：每 100,000 个新生儿${per1w(lo)}</p></div>
           <p>${S.src ? S.srcFlv : ""}${help}</p>
           <p class="x-odds__src">数据：国家统计局 2024、CHFS、胡润（测算）</p>`;
         // 方法：中间各级按国家统计局 2024 年居民收入（中位数 34,707 元/人）折算；顶部按 CHFS、胡润财富报告估算；家庭 = 人均 × 2.8
@@ -1445,8 +1456,8 @@
         const who = `${S.name} · ${place(S)} · ${famShort(S)}${eduTag() ? " · " + eduTag() : ""}`;
         $("l-who").textContent = who; $("l-who").title = who;
         $("l-year").textContent = "· " + (S.y0 + S.age);
-        const m = S.money, d = S.dy, lm = $("l-money");
-        lm.innerHTML = `${m < 0 ? "负债" : "存款"} <b>${Math.abs(m).toFixed(1)}</b> 万${d != null ? `（${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}）` : ""} · 年收入 <b>${(S.yinc || 0).toFixed(1)}</b> 万`;
+        const m = S.money, d = S.dy, lm = $("l-money"), wv = worthOf(S);
+        lm.innerHTML = `${m < 0 ? "负债" : "存款"} <b>${Math.abs(m).toFixed(1)}</b> 万${d != null ? `（${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}）` : ""} · 年收入 <b>${(S.yinc || 0).toFixed(1)}</b> 万<span class="x-money__w">财富总额 ${worthTxt(wv)}</span>`;
         lm.classList.toggle("is-debt", m < 0);
         renderFocus();
         $("bars").innerHTML = [["健康", S.hp], ["幸福", S.joy], ["知识", S.iq], ["人情", S.rel]]
@@ -1550,8 +1561,8 @@
       // 越往上越能接住，但不是无限：企业主家庭兜底最强
       const rescP = () => Math.min(0.97, RESC[S.fam0] * sx("resc"));
       const netMul = () => { const a = S.age, k = a <= 35 ? 1 : a >= 40 ? 0 : (40 - a) / 5, b = NETP[S.fam0]; return b + (NET[S.fam0] - b) * k; };
-      // 家里给的房子和继承来的家底，每年带来租金、理财收益（约 2.5%）
-      const assetInc = () => ((S.famProp || 0) + (S.famCap || 0)) * 0.025 * (0.85 + 0.3 * R());
+      // 家里给的房子、继承的房和家底，每年带来租金、理财收益（约 2.5%）；欠着贷款的房子收益打折
+      const assetInc = () => (Math.max(0, (S.famProp || 0) - (S.famPropDebt || 0)) + Math.max(0, (S.inhProp || 0) - (S.inhDebt || 0)) + (S.famCap || 0)) * 0.025 * (0.85 + 0.3 * R());
       const MEDC = [0, 0.075, 0.307, 0.625, 0.745, 0.85, 0.9, 0.95, 0.95, 0.95]; // 大病自付里家里能出的份额
       const potUse = (v) => { v = Math.max(0, Math.min(v, S.famPot)); S.famPot -= v; return v; };
       function income() {
@@ -1573,7 +1584,7 @@
         S.money += v;
         log(S.fam >= 5 ? `十八岁生日，家里给你开了一张卡，里面有 ${Math.round(v)} 万。` : v >= 1 ? `十八岁生日，爸妈给你存了 ${f1(v)} 万：“以后用得着。”` : `十八岁生日，爸妈塞给你一个红包，${Math.round(v * 10000)} 块。`, "warm");
       }
-      // 父亲走后分家产：父母剩下的钱，兄弟姐妹平分
+      // 父亲走后分家产：父母剩下的钱和房子，兄弟姐妹平分；房子可能带着没还完的贷款
       function inherit() {
         S.inh = 1; let v = (Math.max(0, S.famPot) * INHM[S.fam0]) / (1 + (S.sibs || 0)); S.famPot = 0;
         if (v < 1) return log("父亲没留下什么钱，只留下一屋子旧物。");
@@ -1582,8 +1593,16 @@
           const k = 0.6 + 0.25 * R(); v *= k; relAdd("Rf", -6); S.joy = clamp(S.joy - 6);
           log(rnd([S.sibs ? "分家产时兄弟姐妹闹上了法庭，官司打了两年。" : "葬礼刚过，叔伯就拿着一份“补充协议”找上门，官司打了两年。", "一个从没见过的“同父异母”的兄弟出现了，带着律师。"]) + `律师费和让出去的份额，吃掉了约 ${Math.round((1 - k) * 100)}%。`, "bad");
         }
-        S.money += v; S.famCap = (S.famCap || 0) + v;
-        log(`料理完后事，${S.sibs ? `兄弟姐妹 ${S.sibs + 1} 人分了家里的积蓄和房子，` : ""}你继承了 ${v >= 100 ? Math.round(v) : f1(v)} 万。`, v >= 100 ? "big" : "plain");
+        // 接手的生意欠着债：厂子在你名下，债也一起接
+        if (S.heir && R() < 0.4) { const d = Math.min(v * 0.5, 20 + 60 * R()); v -= d; S.joy = clamp(S.joy - 4); log(`你接手的生意还欠着 ${Math.round(d)} 万，先从家产里抵了。`, "bad"); }
+        // 一部分家底是房子：可能带着没还完的贷款，价跌得狠时是负资产
+        const rp = S.fam0 >= 2 && v >= 8 ? 0.35 + 0.3 * R() : 0, vH = v * rp, vC = v - vH;
+        if (vH > 0) {
+          S.inhProp = (S.inhProp || 0) + vH;
+          if (R() < 0.22) { const d = vH * (0.25 + 0.5 * R()); S.inhDebt = (S.inhDebt || 0) + d; log(d < vH * 0.9 ? `分到的房子还欠着银行 ${Math.round(d)} 万贷款。` : `分到的房子买在了高点，现在跌得比贷款还低，倒欠着银行 ${Math.round(d - vH)} 万。`, "bad"); }
+        }
+        S.money += vC; S.famCap = (S.famCap || 0) + vC;
+        log(`料理完后事，${S.sibs ? `兄弟姐妹 ${S.sibs + 1} 人分了家里的积蓄和房子，` : ""}你继承了 ${v >= 100 ? Math.round(v) : f1(v)} 万${vH > 0 ? `（其中房子约 ${Math.round(vH)} 万${S.inhDebt ? "，还带着贷款" : ""}）` : ""}。`, v >= 100 ? "big" : "plain");
       }
       // 出国留学：主要是第 4 级及以上；学历按 985 档算收入
       const abroadCost = () => (S.fam >= 6 ? 250 : S.fam === 5 ? 150 : 80);
@@ -1636,9 +1655,13 @@
         }
         if (R() < 0.0005) { ev += 500; S.joy += 20; log("彩票中了 500 万！", "warm"); }
         if (S.chai && R() < 0.003) { const c = 100 + 200 * R(); S.chai = false; ev += c; S.joy += 15; log(`老家拆迁，分到 ${Math.round(c)} 万补偿款。`, "warm"); }
-        if (a > 40 && R() < 0.01) {
-          const c = 10 + 20 * R(), own = c * (S.urban ? 0.4 : 0.6) * (S.fam0 >= 5 ? 0.3 : 1), fh = potUse(own * (S.src === "pro" ? Math.max(0.85, MEDC[S.fam0]) : MEDC[S.fam0])); ev -= own - fh; S.hp -= 20 - S.Rf / 50 - (S.src === "pro" ? 4 : 0); // 专业人士家庭：找对医生、少走弯路 S.tags.add("ill"); // 家人照料，恢复快一点；家底厚的，家里替你出一部分
-          log(`查出大病，花了 ${f1(c)} 万，医保报销后自付 ${f1(own)} 万${fh >= 0.5 ? `，家里替你出了 ${f1(fh)} 万` : ""}。`, "bad");
+        if (a > 40 && R() < 0.012) {
+          const c = 20 + 40 * R(), own = Math.round(c * (S.urban ? 0.3 : 0.45) * (S.fam0 >= 5 ? 0.4 : 1)), fh = potUse(own * (S.src === "pro" ? Math.max(0.85, MEDC[S.fam0]) : MEDC[S.fam0])), self = own - fh;
+          let msg = `查出大病，花了 ${f1(c)} 万，医保报销后自付 ${f1(own)} 万${fh >= 0.5 ? `，家里替你出了 ${f1(fh)} 万` : ""}`;
+          // 大病扛不住时：先卖自购房凑钱（拿回净值约九成），不够就背债（月供逻辑自动让 money 变负）
+          if (S.house && self >= 15 && S.money < self * 0.5) { const hv = S.house.P - S.house.P * 0.7 * S.house.left / 30; S.money += hv * 0.9; S.house = null; msg += `，卖掉房子凑了 ${Math.round(hv * 0.9)} 万`; S.joy = clamp(S.joy - 8); }
+          ev -= self; S.hp -= 20 - S.Rf / 50 - (S.src === "pro" ? 4 : 0); // 专业人士家庭：找对医生、少走弯路 S.tags.add("ill"); // 家人照料，恢复快一点；家底厚的，家里替你出一部分
+          log(msg + `${self >= 15 && S.money < -5 ? "，还欠下了一笔债" : ""}。`, "bad");
         }
         S.dy = inc - expense() - mort + ev; S.money += S.dy;
         // 兜底：钱上出了大窟窿，家底厚的家里会接住（五年一次）；创业失败的第一次，有钱人家几乎一定兜底
@@ -1896,9 +1919,10 @@
           const c = 0.6 + 0.9 * R(); S.money -= c;
           if (!S.seen.supp) { S.seen.supp = 1; log("爸妈没有退休金，你每个月往家里寄钱，一年下来一万多。"); }
         }
-        // 家里给房：婚房或投资房，租金归你
+        // 家里给房：婚房或投资房，租金归你（可能带着没还完的贷款）
         if (GIFT_P[S.fam0] && a >= 25 && a <= 34 && !S.famProp && S.famPot > 30 && R() < 1 - Math.pow(1 - GIFT_P[S.fam0], 0.1)) {
           const v = Math.min(S.famPot * 0.6, GIFT_V[S.fam0] * (0.7 + 0.6 * R())); S.famPot -= v; S.famProp = v;
+          if (R() < 0.18) { const d = v * (0.2 + 0.4 * R()); S.famPropDebt = d; log(`爸妈把房子过户给你时，还剩 ${Math.round(d)} 万贷款没还完，得你接着还。`, "plain"); }
           log(S.fam0 >= 5 ? `家里在市中心给你全款买了一套房，约 ${Math.round(v)} 万，租出去，租金归你。` : `爸妈拿出大半辈子的积蓄，给你全款买了一套约 ${Math.round(v)} 万的小房子，先租出去。`, "warm");
         }
         // 富二代挥霍
@@ -2345,7 +2369,7 @@
           $("e-age").textContent = S.age + " 岁";
           $("e-inc").textContent = Math.round(S.inc) + " 万";
           const wan = (v) => (v < 0 ? "−" : "") + Math.abs(Math.round(v)) + " 万", hs = S.house;
-          const net = S.money + (hs ? hs.P - hs.P * 0.7 * hs.left / 30 : 0) + (S.famProp || 0);
+          const net = worthOf(S);
           $("e-peak").textContent = wan(S.peak); $("e-low").textContent = wan(S.low); $("e-net").textContent = wan(net);
           $("e-net").style.color = net < 0 ? "var(--fill-system-red)" : "";
           $("e-low").style.color = S.low < 0 ? "var(--fill-system-red)" : "";
