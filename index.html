@@ -726,16 +726,30 @@
         s.biz = s.src === "biz";
         s.rent = s.src === "fang" ? RENT[g] * (0.7 + 0.6 * R()) : 0;
       }
+      // 很困难家庭（第 1 级）现实下限：人均年可支配 5,000 元（家庭月约 1,167 元）。
+      // 低于此基本由低保 / 特困供养兜底（2024 全国农村低保平均标准约 5,000 元/人·年），可支配收入不会更低；
+      // 拟合分布的下尾二次弯曲会把 z<−3 压到人均几十元，第 1 级抽签必须截断到现实下限
+      const L1_MIN = 5000;
       function drawFam(s) {
         // 先按 P(级 | 省, 城乡) 抽级（和出生卡上显示的同一个函数），再在这一级的收入区间里抽家庭人均收入（城乡内排名 s.grpPct）
         const R = Math.random, pf = FLV[s.p.n] || {}, c = famCell(s.p, s.urban);
-        const t = wpick(c.fam), u0 = Phi(c.z[t]), u1 = Phi(c.z[t + 1]);
-        const z = invPhi(u0 + (u1 - u0) * R());
-        const inc = Math.min(t < 9 ? LV_CUT[t] - 1 : Infinity, Math.max(t ? LV_CUT[t - 1] : 0, Math.exp(lnQ(LADDER[s.urban ? 1 : 0], z)) * incF(s.p, s.urban)));
+        const P = LADDER[s.urban ? 1 : 0], lf = Math.log(incF(s.p, s.urban));
+        const t = wpick(c.fam);
+        let z, inc;
+        if (t === 0) {
+          // 第 1 级内部收入 [5,000, 12,857) 元/人·年 对数均匀（低保兜底 → 月入 3,000 的现实分布，非对数正态尾部）
+          const lLo = Math.log(L1_MIN), lHi = Math.log(LV_CUT[0]);
+          inc = Math.exp(lLo + (lHi - lLo) * R());
+          z = zAt(P, Math.log(inc) - lf);
+        } else {
+          const u0 = Phi(c.z[t]), u1 = Phi(c.z[t + 1]);
+          z = invPhi(u0 + (u1 - u0) * R());
+          inc = Math.min(t < 9 ? LV_CUT[t] - 1 : Infinity, Math.max(LV_CUT[t - 1], Math.exp(lnQ(P, z)) * incF(s.p, s.urban)));
+        }
         s.grpPct = Phi(z) * 100; s.famPct = pctOf(inc);
         s.fam = s.fam0 = t; s.dec = decOf(t); s.top = topOf(t);
         s.parEdu = wpick(PED[t]);
-        s.famInc = Math.max(t ? Math.ceil(LV_CUT[t - 1] / 100) * 100 : 100, Math.min(t < 9 ? Math.floor((LV_CUT[t] - 1) / 100) * 100 : Infinity, Math.round(inc / 100) * 100)); // 人均，取整后仍在本级内
+        s.famInc = Math.max(t ? Math.ceil(LV_CUT[t - 1] / 100) * 100 : L1_MIN, Math.min(t < 9 ? Math.floor((LV_CUT[t] - 1) / 100) * 100 : Infinity, Math.round(inc / 100) * 100)); // 人均，取整后仍在本级内
         // 家庭资产（万）：第 6 级 600 万–1000 万 · 第 7 级 1000 万–1 亿 · 第 8 级 1–5 亿 · 第 9 级 5–20 亿 · 第 10 级 20 亿以上
         s.famAsset = [600 + 400 * R(), 1000 * Math.pow(10, R() * R()), 10000 * Math.pow(5, R() * R()), 50000 * Math.pow(4, R()), 200000 * Math.pow(10, R() * R())][t - 5] || 0;
         s.famPot = t >= 5 ? s.famAsset : ASSET[t] * (0.6 + 0.8 * R());
@@ -747,7 +761,7 @@
         if (s.lvl != null) s.lvl = Math.min(1, 0.75 * s.lvl + [0, 0.075, 0.19, 0.305, 0.345, 0.38, 0.38, 0.38, 0.38, 0.38][t] + (s.src === "exec" ? 0.05 : 0));
       }
       // 家庭收入：人均 × 2.8；月收入 = 年 / 12
-      const wan = (v) => (v >= 1e4 ? `${v >= 1e5 ? Math.round(v / 1e4).toLocaleString("en-US") : +(v / 1e4).toFixed(1)} 万` : `${(Math.round(v / 100) * 100).toLocaleString("en-US")} 元`);
+      const wan = (v) => (v >= 1e4 ? `${v >= 1e5 ? Math.round(v / 1e4).toLocaleString("en-US") : +(v / 1e4).toFixed(1)} 万` : v >= 100 ? `${(Math.round(v / 100) * 100).toLocaleString("en-US")} 元` : `不足 100 元`);
       const hhTxt = (s) => "约 " + wan(s.famInc * HH);
       const hhMon = (s) => "约 " + wan((s.famInc * HH) / 12);
       const decTxt = (s) => `家庭月收入${hhMon(s)} · ${rankTxt(s)}`;

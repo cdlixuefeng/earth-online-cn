@@ -5,7 +5,7 @@ const src = require("fs").readFileSync(__dirname + "/verify.js", "utf8");
 const head = src.slice(0, src.indexOf("let T;"));
 eval(head.replace(/^const /gm, "var "));
 let T;
-eval(main + "\n;T = { famDist, FAM_NAT, PROV, famOdds, famCell, ODDS_NAT, birthCells, uOf, boyP, srb, B_ALL, birth: () => birth(), famReveal, get S() { return S; } };");
+eval(main + "\n;T = { famDist, FAM_NAT, PROV, famCell, birthCells, uOf, boyP, srb, B_ALL, birth: () => birth(), famReveal, get S() { return S; } };");
 const P = (n) => T.PROV.find((q) => q.n === n), r1w = (v) => (v * 1e4 < 1 ? "<1" : Math.round(v * 1e4).toLocaleString("en-US"));
 
 console.log("== 1) 性别 × 城乡：每 10,000 个本省新生儿里约 X 个 ==");
@@ -17,19 +17,19 @@ console.log(`全国（出生加权）：男孩 ${(natB * 100).toFixed(2)}%（性
 console.log("\n== 2) 家庭档位：每 10,000 个本省城/乡新生儿里约 X 个 ==");
 console.log("格子           D1     D5     D8    D10   前1%  （前0.1%）");
 const rowsX = [["甘肃", 0], ["河南", 0], ["四川", 1], ["广东", 1], ["上海", 1], ["北京", 1]];
-rowsX.forEach(([n, u]) => { const o = T.famOdds(P(n), !!u); console.log((n + (u ? "城镇" : "农村")).padEnd(10, "　").slice(0, 6) + "  " + [o.dec[0], o.dec[4], o.dec[7], o.dec[9], o.top[2] + o.top[3], o.top[3]].map((v) => r1w(v).padStart(6)).join(" ")); });
+rowsX.forEach(([n, u]) => { const o = T.famDist(P(n), !!u); console.log((n + (u ? "城镇" : "农村")).padEnd(10, "　").slice(0, 6) + "  " + [o[0], o[4], o[7], o[9], o[5] + o[6] + o[7] + o[8] + o[9], o[6] + o[7] + o[8] + o[9]].map((v) => r1w(v).padStart(6)).join(" ")); });
 console.log("全国（定义）     1,000  1,000  1,000  1,000    100     10");
 
 console.log("\n== 3) 农村在顶层的占比（解析，出生加权）==");
 let d10 = 0, d10r = 0, t1 = 0, t1r = 0, t01 = 0, t01r = 0;
-T.PROV.forEach((p) => [1, 0].forEach((u) => { const w = (p.b / T.B_ALL) * (u ? T.uOf(p) : 1 - T.uOf(p)); if (!w) return; const o = T.famOdds(p, !!u); d10 += w * o.dec[9]; t1 += w * (o.top[2] + o.top[3]); t01 += w * o.top[3]; if (!u) { d10r += w * o.dec[9]; t1r += w * (o.top[2] + o.top[3]); t01r += w * o.top[3]; } }));
+T.PROV.forEach((p) => [1, 0].forEach((u) => { const w = (p.b / T.B_ALL) * (u ? T.uOf(p) : 1 - T.uOf(p)); if (!w) return; const o = T.famDist(p, !!u); d10 += w * o[9]; t1 += w * (o[5] + o[6] + o[7] + o[8] + o[9]); t01 += w * (o[6] + o[7] + o[8] + o[9]); if (!u) { d10r += w * o[9]; t1r += w * (o[5] + o[6] + o[7] + o[8] + o[9]); t01r += w * (o[6] + o[7] + o[8] + o[9]); } }));
 console.log(`第 10 档里农村 ${(d10r / d10 * 100).toFixed(2)}% · 前 1% 里农村 ${(t1r / t1 * 100).toFixed(3)}% · 前 0.1% 里农村 ${(t01r / t01 * 100).toFixed(4)}%`);
 
 console.log("\n== 4) 全国十等分（解析，出生加权混合）==");
 const dec = [...T.FAM_NAT.slice(0, 9), T.FAM_NAT.slice(9).reduce((a, b) => a + b, 0)];
-console.log(dec.map((v, i) => `D${i + 1} ${(v * 100).toFixed(2)}`).join(" · "), "· 最大偏差", (Math.max(...dec.map((v) => Math.abs(v - 0.1))) * 100).toFixed(2), "个百分点（容差 1.5）");
+const TGT = [0.15, 0.35, 0.30, 0.13, 0.06, 0.009, 0.001, 0.0002, 0.00002, 0.00001];
+console.log(dec.map((v, i) => `D${i + 1} ${(v * 100).toFixed(2)}`).join(" · "), "· 与目标份额最大偏差", (Math.max(...dec.map((v, i) => Math.abs(v - TGT[i]))) * 100).toFixed(2), "个百分点");
 console.log("第 10 档内：富裕 / 高净值 / 豪门 %", T.FAM_NAT.slice(10).map((v) => (v * 100).toFixed(3)).join(" / "));
-
 // 5) 尺寸估算：375 宽，gutter 16，卡片边框 1.5 + 内边距 16
 const N = +process.argv[2] || 3000, $ = (id) => document.getElementById(id);
 const strip = (h) => h.replace(/<br \/>/g, "\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ");
@@ -43,8 +43,8 @@ for (let i = 0; i < N; i++) {
   const lad = $("f-lad").innerHTML, facts = $("f-facts").innerHTML, odds = $("f-odds").innerHTML;
   let h = PRE + 27 + 4 * 8 + 44;
   h += lines(strip($("f-label").textContent), 22, INNER) * 26.4;
-  const cap = lad.match(/x-lad__cap">([\s\S]*?)<\/p>/)[1], me = lad.match(/x-lad__me">([\s\S]*?)<\/p>/)[1];
-  h += lines(strip(cap), 12, INNER) * 15.6 + 4 + 36.6 + 4 + (lad.includes("x-lad__top") ? 20.4 + 4 : 0) + lines(strip(me), 14, INNER) * 20.3;
+  const me = lad.match(/x-lad__me">([\s\S]*?)<\/p>/)[1];
+  h += 36.6 + 4 + (lad.includes("x-lad__top") ? 20.4 + 4 : 0) + lines(strip(me), 14, INNER) * 20.3;
   const rows = [...facts.matchAll(/<dd>([\s\S]*?)<\/dd>/g)].map((m) => lines(strip(m[1]), 14, INNER - 70 - 12));
   h += rows.reduce((a, b) => a + b * 17.5, 0) + (rows.length - 1) * 4;
   const ps = [...odds.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)].map((m) => strip(m[1]));
